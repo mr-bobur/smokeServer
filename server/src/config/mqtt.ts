@@ -20,7 +20,9 @@ export const initializeMqttClient = (
       clientId: `building_gw_server_${Math.random().toString(16).slice(2, 8)}`,
       connectTimeout: 2500,
       reconnectPeriod: 15000,
-      clean: true
+      clean: true,
+      username: process.env.MQTT_USER || undefined,
+      password: process.env.MQTT_PASSWORD || undefined
     });
 
     mqttClient.on('connect', () => {
