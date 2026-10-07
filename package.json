@@ -1,0 +1,15 @@
+{
+  "name": "smart-building-ecosystem",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise Smart Building Wireless Smoke & Security Monitoring Ecosystem (Digital Twin)",
+  "scripts": {
+    "build:server": "npm --prefix server run build",
+    "build:client": "npm --prefix client run build",
+    "build": "npm run build:server && npm run build:client",
+    "start:server": "npm --prefix server run start",
+    "start:client": "npm --prefix client run start",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev"
+  }
+}

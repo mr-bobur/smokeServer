@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+server/dist/
+.next/
+client/.next/
+out/
+build/
+firmware/*/.pio/
+firmware/*/.vscode/
+.pio/
+__pycache__/
+*.pyc
+
+
+# Environment Variables & Secrets
+# Note: Keep .env.example tracked
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Temporary / Uploads
+uploads/blueprints/*
+!uploads/blueprints/.gitkeep
