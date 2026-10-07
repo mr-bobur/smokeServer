@@ -13,12 +13,12 @@
 #define CELLULAR_PASS           ""
 
 // 2. MQTT Broker Configuration
-// NOTE: Change to your local machine IP where Node.js server is running, or cloud broker IP
-#define MQTT_BROKER_HOST        "192.168.1.100"  // Set to server host IP or domain
+// Connected to your cloud production server
+#define MQTT_BROKER_HOST        "170.168.60.245"  // Production Server Host IP
 #define MQTT_BROKER_PORT        1883
 #define MQTT_CLIENT_ID_PREFIX   "GW_LILYGO_SIM7600_"
-#define MQTT_USERNAME           ""
-#define MQTT_PASSWORD           ""
+#define MQTT_USERNAME           "public"
+#define MQTT_PASSWORD           "Acdb@2026"
 
 // 3. Smart Building Topology Identity
 #define GATEWAY_ID              "GATEWAY-CENTRAL-01"
