@@ -2,7 +2,9 @@ const mqtt = require('mqtt');
 
 const brokerUrl = 'mqtt://127.0.0.1:1883';
 const client = mqtt.connect(brokerUrl, {
-  clientId: 'test_publisher_' + Math.random().toString(16).slice(2, 8)
+  clientId: 'test_publisher_' + Math.random().toString(16).slice(2, 8),
+  username: 'public',
+  password: 'Acdb@2026'
 });
 
 client.on('connect', () => {
