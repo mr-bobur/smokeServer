@@ -32,8 +32,9 @@ void cellularMqttTask(void* pvParameters) {
     Serial.println("[Task] Cellular & MQTT Task Started on Core " + String(xPortGetCoreID()));
 
     initCellularModem();
-    connectCellularGprs();
-    connectMqttBroker();
+    if (connectCellularGprs()) {
+        connectMqttBroker();
+    }
 
     SensorTelemetry item;
 

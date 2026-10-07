@@ -86,14 +86,33 @@ void initCellularModem() {
 }
 
 bool connectCellularGprs() {
-    Serial.println("[Cellular] Checking network registration...");
-    if (!modem.waitForNetwork(45000L)) {
-        Serial.println("[Cellular] Network registration timed out!");
-        return false;
+    SimStatus simStatus = modem.getSimStatus();
+    Serial.printf("[Cellular] Checking SIM Status: %d (1=READY, 0=ERROR/ABSENT, 2=PIN_LOCKED)\n", (int)simStatus);
+
+    // Send quick AT diagnostics to Serial
+    SerialAT.println("AT+CPIN?");
+    delay(200);
+    while (SerialAT.available()) {
+        Serial.write(SerialAT.read());
     }
 
     int csq = modem.getSignalQuality();
+    Serial.printf("[Cellular] Signal Quality (CSQ): %d (0-31, 99=no signal)\n", csq);
+
+    SerialAT.println("AT+CEREG?");
+    delay(200);
+    while (SerialAT.available()) {
+        Serial.write(SerialAT.read());
+    }
+
+    Serial.println("[Cellular] Checking network registration...");
+    if (!modem.waitForNetwork(15000L)) {
+        Serial.println("[Cellular] Network registration timed out or no cellular signal/SIM!");
+        return false;
+    }
+
     String op = modem.getOperator();
+    csq = modem.getSignalQuality();
     Serial.printf("[Cellular] Network Registered. Operator: %s | CSQ: %d\n", op.c_str(), csq);
 
     Serial.printf("[Cellular] Connecting GPRS with APN: '%s'...\n", CELLULAR_APN);
@@ -133,9 +152,14 @@ bool connectMqttBroker() {
     }
 }
 
+static uint32_t lastGprsRetryMs = 0;
+
 void maintainCellularMqtt() {
     if (!modem.isGprsConnected()) {
-        connectCellularGprs();
+        if (millis() - lastGprsRetryMs > 10000) {
+            lastGprsRetryMs = millis();
+            connectCellularGprs();
+        }
     }
 
     if (modem.isGprsConnected()) {
