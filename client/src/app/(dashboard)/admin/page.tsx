@@ -94,7 +94,7 @@ export default function SuperAdminDashboardPage() {
     triggerTestAlarm,
     refreshOverview,
     refreshFloor
-  } = useFloorData(4, 'super_admin');
+  } = useFloorData(1, 'super_admin');
 
   // Left Sidebar Navigation State
   const [activeSection, setActiveSection] = useState<MainSection>('buildings');

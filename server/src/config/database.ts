@@ -439,6 +439,21 @@ class DigitalTwinDatabase {
         pairing_mode_active: false,
         last_seen: nowIso,
         created_at: nowIso
+      },
+      {
+        id: 4,
+        building_id: 1,
+        building_name: 'Nest One Residence - Block B',
+        serial_number: 'GW-LILYGO-TCALL-SIM800',
+        mac_address: 'B4:E6:2D:80:C3:01',
+        imei: '869482059114099',
+        sim_operator: 'Uztelecom GSM / 43408',
+        firmware_version: 'v1.0.0-TCall-SIM800L',
+        rssi_dbm: -51,
+        status: 'online',
+        pairing_mode_active: false,
+        last_seen: nowIso,
+        created_at: nowIso
       }
     ];
 
@@ -572,7 +587,8 @@ class DigitalTwinDatabase {
                   co: 4.0,
                   temp: 23.4,
                   reed: false,
-                  glass: false
+                  glass: false,
+                  customChip: bld.id === 1 && f === 1 ? 'C3-D04589043254' : undefined
                 },
                 {
                   typeByte: '0x03',

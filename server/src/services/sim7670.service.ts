@@ -104,6 +104,34 @@ class Sim7670Service {
     this.pushLog(command, rx, 'INIT');
     return { tx: command, rx };
   }
+
+  public updateFromLiveModem(data: {
+    modem?: string;
+    operator?: string;
+    csq?: number;
+    uptime?: number;
+    gatewayId?: string;
+  }): void {
+    if (data.operator) this.status.operator = data.operator;
+    if (data.modem) this.status.module_model = `LilyGO T-Call (${data.modem})`;
+    if (typeof data.csq === 'number') {
+      this.status.rssi_csq = data.csq;
+      this.status.rssi_dbm = data.csq === 99 ? -113 : -113 + data.csq * 2;
+      this.status.signal_bars = Math.min(5, Math.max(1, Math.round(data.csq / 6)));
+    }
+    this.status.sim_ready = true;
+    this.status.gprs_attached = true;
+    this.status.mqtt_tls_connected = true;
+    this.status.network_mode = 'GSM Fallback';
+    const entry = {
+      timestamp: new Date().toISOString(),
+      tx: 'HEARTBEAT_REPORT',
+      rx: `+CSQ: ${data.csq ?? 31} | OP: ${data.operator ?? '43408'} | UPTIME: ${data.uptime ?? 0}s`,
+      category: 'MQTT' as const
+    };
+    this.status.at_logs = [entry, ...this.status.at_logs.slice(0, 29)];
+    socketService.emitGlobal('SIM7670_AT_LOG', this.status);
+  }
 }
 
 export const sim7670Service = new Sim7670Service();

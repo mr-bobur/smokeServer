@@ -28,8 +28,7 @@ export const initializeMqttClient = (
     mqttClient.on('connect', () => {
       isMqttBrokerConnected = true;
       console.log(`[MQTT] Connected to broker at ${brokerUrl}`);
-      mqttClient?.subscribe(TELEMETRY_TOPIC_PATTERN, { qos: 1 });
-      mqttClient?.subscribe(ALARM_TOPIC_PATTERN, { qos: 2 });
+      mqttClient?.subscribe('smartbuilding/#', { qos: 1 });
     });
 
     mqttClient.on('message', (topic: string, payload: Buffer) => {

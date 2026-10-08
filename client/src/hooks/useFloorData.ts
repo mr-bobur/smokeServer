@@ -96,9 +96,9 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
   );
 
   const fetchFloorDetails = useCallback(
-    async (floorNum: number, bId = selectedBuildingId) => {
+    async (floorNum: number, bId = selectedBuildingId, showLoading = true) => {
       try {
-        setLoading(true);
+        if (showLoading) setLoading(true);
         const res = await fetch(
           `${API_BASE}/api/floors/${floorNum}?building_id=${bId}`
         );
@@ -111,7 +111,7 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
       } catch (err) {
         console.error(`Failed to fetch floor ${floorNum}:`, err);
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     },
     [selectedBuildingId]
@@ -119,10 +119,18 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
 
   useEffect(() => {
     fetchBuildingOverview(selectedBuildingId);
+    const interval = setInterval(() => {
+      fetchBuildingOverview(selectedBuildingId);
+    }, 3500);
+    return () => clearInterval(interval);
   }, [selectedBuildingId, fetchBuildingOverview]);
 
   useEffect(() => {
-    fetchFloorDetails(selectedFloor, selectedBuildingId);
+    fetchFloorDetails(selectedFloor, selectedBuildingId, true);
+    const interval = setInterval(() => {
+      fetchFloorDetails(selectedFloor, selectedBuildingId, false);
+    }, 3500);
+    return () => clearInterval(interval);
   }, [selectedFloor, selectedBuildingId, fetchFloorDetails]);
 
   // ==========================================================================
