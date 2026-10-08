@@ -25,18 +25,20 @@
 #define PIN_IR_TX            4   // Xiao D2 (GPIO4) -> IR Emitter LED pulse drive
 
 // User Feedback & Controls
-#define PIN_ALARM_BUZZER     5   // Xiao D3 (GPIO5) -> Alarm Buzzer (Active LOW via transistor)
+#define PIN_ALARM_BUZZER     5   // Xiao D3 (GPIO5) -> Alarm Buzzer / Piezo driver
 #define PIN_STATUS_LED       6   // Xiao D4 (GPIO6) -> Visual Status LED (Active LOW)
 #define PIN_TEST_BTN         9   // Xiao D9 (GPIO9) -> Built-in BOOT button (Active LOW)
 
-// Polarity Configurations (Inverted for active-low transistor & LED circuits)
+// Polarity Configurations
 #define IR_LED_ACTIVE_LEVEL      HIGH
 
 // Status Indicator LED Logic (Active LOW: LOW = ON, HIGH = OFF)
 #define STATUS_LED_ACTIVE_LEVEL  LOW
 
-// Buzzer drive mode:
-// Active buzzer controlled via transistor (Active LOW: LOW = Sound ON, HIGH = Silent OFF)
-#define BUZZER_IS_PASSIVE        false
-#define BUZZER_PWM_FREQ_HZ       2700
-#define BUZZER_ACTIVE_LEVEL      LOW
+// Buzzer Operation Modes (Selectable via Serial '1', '2', '3', '4')
+enum BuzzerMode {
+    BUZZER_MODE_TONE_2700 = 0, // Piezo PWM Tone 2.7 kHz (Standard smoke alarm resonance)
+    BUZZER_MODE_TONE_4000 = 1, // Piezo PWM Tone 4.0 kHz (High pitch resonance)
+    BUZZER_MODE_DC_HIGH   = 2, // Active DC Buzzer (HIGH = Sound ON, LOW = Silent OFF)
+    BUZZER_MODE_DC_LOW    = 3  // Active DC Buzzer (LOW = Sound ON, HIGH = Silent OFF)
+};

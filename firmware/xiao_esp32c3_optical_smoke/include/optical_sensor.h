@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "board_pins.h"
 
 struct OpticalReading {
     int ambientAdc;        // Photodiode ADC before pulse (ambient light/dark level)
@@ -18,7 +19,13 @@ void setSmokeThreshold(int newThreshold);
 int getSmokeThreshold();
 int getBaselineDelta();
 
-// Buzzer & Alarm Indicator
+// Buzzer & Alarm Indicator (100% Non-Blocking millis() implementation)
 void initAlarmSounder();
 void updateAlarmSounder(bool isAlarm);
-void playTestChirp();
+void triggerLedPulse(uint16_t durationMs = 30);
+void triggerTestChirpNonBlocking(uint16_t durationMs = 120);
+
+// Buzzer Mode Configuration
+void setBuzzerMode(BuzzerMode mode);
+BuzzerMode getBuzzerMode();
+const char* getBuzzerModeName();

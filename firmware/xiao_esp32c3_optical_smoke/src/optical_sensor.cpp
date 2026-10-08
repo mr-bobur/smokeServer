@@ -7,6 +7,7 @@ static Preferences prefs;
 static int baselineDelta = 50;       // Clean air chamber baseline delta
 static int currentThreshold = DEFAULT_SMOKE_THRESHOLD_ADC;
 static int consecutiveAlarms = 0;
+static BuzzerMode currentBuzzerMode = BUZZER_MODE_TONE_2700;
 
 void initOpticalSensor() {
     // Configure IR Emitter Pin
@@ -18,13 +19,14 @@ void initOpticalSensor() {
     analogReadResolution(12);                      // 12-bit ADC (0 - 4095)
     analogSetAttenuation(ADC_11db);                // Full 0 - 3.1V range
 
-    // Load saved calibration baseline & threshold from NVS
+    // Load saved calibration baseline, threshold & buzzer mode from NVS
     prefs.begin(NVS_NAMESPACE, false);
     baselineDelta = prefs.getInt("baseline", 60);
     currentThreshold = prefs.getInt("thresh", DEFAULT_SMOKE_THRESHOLD_ADC);
+    currentBuzzerMode = (BuzzerMode)prefs.getInt("buzzer_mode", BUZZER_MODE_TONE_2700);
 
-    Serial.printf("[Optical Sensor] Initialized. Baseline Delta: %d | Threshold: %d\n",
-                  baselineDelta, currentThreshold);
+    Serial.printf("[Optical Sensor] Initialized. Baseline: %d | Thresh: %d | Buzzer: %s\n",
+                  baselineDelta, currentThreshold, getBuzzerModeName());
 }
 
 static int sampleAdcAverage(int samples) {
@@ -110,7 +112,7 @@ void calibrateCleanAirBaseline(int sampleCycles) {
     prefs.putInt("baseline", baselineDelta);
 
     Serial.printf("[Calibration] Success! New Baseline Delta: %d ADC counts.\n", baselineDelta);
-    playTestChirp();
+    triggerTestChirpNonBlocking(150);
 }
 
 void setSmokeThreshold(int newThreshold) {
@@ -130,22 +132,55 @@ int getBaselineDelta() {
 }
 
 // -----------------------------------------------------------------------------
-// Alarm Sounder (Buzzer & LED) Implementation
+// Alarm Sounder (Buzzer & LED) Implementation - 100% Non-Blocking millis()
 // -----------------------------------------------------------------------------
+static uint32_t ledTurnOffAtMs = 0;
+static bool ledPulseActive = false;
+static uint32_t testChirpOffAtMs = 0;
+static bool testChirpActive = false;
+
 static void soundBuzzerDirect(bool state) {
-    if (BUZZER_IS_PASSIVE) {
-        if (state) {
-            tone(PIN_ALARM_BUZZER, BUZZER_PWM_FREQ_HZ);
-        } else {
-            noTone(PIN_ALARM_BUZZER);
+    if (state) {
+        switch (currentBuzzerMode) {
+            case BUZZER_MODE_TONE_2700:
+                tone(PIN_ALARM_BUZZER, 2700);
+                break;
+            case BUZZER_MODE_TONE_4000:
+                tone(PIN_ALARM_BUZZER, 4000);
+                break;
+            case BUZZER_MODE_DC_HIGH:
+                digitalWrite(PIN_ALARM_BUZZER, HIGH);
+                break;
+            case BUZZER_MODE_DC_LOW:
+                digitalWrite(PIN_ALARM_BUZZER, LOW);
+                break;
         }
     } else {
-        digitalWrite(PIN_ALARM_BUZZER, state ? BUZZER_ACTIVE_LEVEL : !BUZZER_ACTIVE_LEVEL);
+        noTone(PIN_ALARM_BUZZER);
+        // Ensure transistor is completely OFF in silent state (0V LOW for Tone & DC_HIGH)
+        if (currentBuzzerMode == BUZZER_MODE_DC_LOW) {
+            digitalWrite(PIN_ALARM_BUZZER, HIGH);
+        } else {
+            digitalWrite(PIN_ALARM_BUZZER, LOW);
+        }
     }
 }
 
 static void setStatusLed(bool on) {
     digitalWrite(PIN_STATUS_LED, on ? STATUS_LED_ACTIVE_LEVEL : !STATUS_LED_ACTIVE_LEVEL);
+}
+
+void triggerLedPulse(uint16_t durationMs) {
+    setStatusLed(true);
+    ledTurnOffAtMs = millis() + durationMs;
+    ledPulseActive = true;
+}
+
+void triggerTestChirpNonBlocking(uint16_t durationMs) {
+    soundBuzzerDirect(true);
+    setStatusLed(true);
+    testChirpOffAtMs = millis() + durationMs;
+    testChirpActive = true;
 }
 
 void initAlarmSounder() {
@@ -156,20 +191,61 @@ void initAlarmSounder() {
     setStatusLed(false);
 }
 
+void setBuzzerMode(BuzzerMode mode) {
+    currentBuzzerMode = mode;
+    prefs.putInt("buzzer_mode", (int)mode);
+    Serial.printf("[Config] Buzzer Mode changed to: %s\n", getBuzzerModeName());
+    triggerTestChirpNonBlocking(100);
+}
+
+BuzzerMode getBuzzerMode() {
+    return currentBuzzerMode;
+}
+
+const char* getBuzzerModeName() {
+    switch (currentBuzzerMode) {
+        case BUZZER_MODE_TONE_2700: return "Piezo PWM Tone 2.7 kHz (Standard Smoke Alarm)";
+        case BUZZER_MODE_TONE_4000: return "Piezo PWM Tone 4.0 kHz (High Pitch)";
+        case BUZZER_MODE_DC_HIGH:   return "Active DC Buzzer (HIGH=ON, LOW=OFF)";
+        case BUZZER_MODE_DC_LOW:    return "Active DC Buzzer (LOW=ON, HIGH=OFF)";
+        default: return "Unknown";
+    }
+}
+
 /**
- * Executes ISO 8201 / T3 Standard Temporal Fire Alarm Pattern:
+ * Executes ISO 8201 / T3 Standard Temporal Fire Alarm Pattern completely non-blocking:
  * 3 beeps of 0.5s separated by 0.5s pause, then 1.5s pause.
  */
 void updateAlarmSounder(bool isAlarm) {
     static uint32_t patternStartMs = 0;
 
-    if (!isAlarm) {
-        soundBuzzerDirect(false);
-        setStatusLed(false);
-        patternStartMs = 0;
+    // Handle test chirp timer
+    if (testChirpActive) {
+        if (millis() >= testChirpOffAtMs) {
+            soundBuzzerDirect(false);
+            setStatusLed(false);
+            testChirpActive = false;
+        }
         return;
     }
 
+    if (!isAlarm) {
+        soundBuzzerDirect(false);
+        patternStartMs = 0;
+
+        // Manage non-blocking LED pulse timer in normal mode
+        if (ledPulseActive) {
+            if (millis() >= ledTurnOffAtMs) {
+                setStatusLed(false);
+                ledPulseActive = false;
+            }
+        } else {
+            setStatusLed(false);
+        }
+        return;
+    }
+
+    // Alarm mode: T3 fire temporal cadence
     if (patternStartMs == 0) {
         patternStartMs = millis();
     }
@@ -193,12 +269,4 @@ void updateAlarmSounder(bool isAlarm) {
 
     soundBuzzerDirect(beepOn);
     setStatusLed(beepOn);
-}
-
-void playTestChirp() {
-    soundBuzzerDirect(true);
-    setStatusLed(true);
-    delay(100);
-    soundBuzzerDirect(false);
-    setStatusLed(false);
 }

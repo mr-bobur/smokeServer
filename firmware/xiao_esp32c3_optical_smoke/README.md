@@ -70,15 +70,24 @@ Dastur ishga tushganda har 800ms da quyidagicha o'lchov hisobotini chiqaradi:
 ```
 
 ### Klaviatura buyruqlari (Serial monitor oynasida yozish mumkin):
+* **`1`** : Buzzer rejimini **2.7 kHz PWM Chastotaga** o'tkazish (Standart pyezo tutun datchiklari uchun rezonans ovozi).
+* **`2`** : Buzzer rejimini **4.0 kHz PWM Chastotaga** o'tkazish (Yuqori tonli o'tkir ovoz).
+* **`3`** : Buzzer rejimini **Aktiv DC (HIGH = Yoniq, LOW = Jimlik)** ga o'tkazish.
+* **`4`** : Buzzer rejimini **Aktiv DC (LOW = Yoniq, HIGH = Jimlik)** ga o'tkazish.
 * **`c`** : Toza havoda nol bazasini kalibratsiyalash (`Clean Air Baseline`).
-* **`+`** : Tutun chegarasini 50 birlikka oshirish (sezuvchanlikni kamaytirish, soxta signallarning oldini olish).
-* **`-`** : Tutun chegarasini 50 birlikka kamaytirish (sezuvchanlikni oshirish).
-* **`t`** : Buzzer va svetodiodni qisqa chiyillatib tekshirish.
+* **`+`** / **`-`** : Tutun chegarasini (threshold) 50 birlikka oshirish / kamaytirish.
+* **`t`** : Buzzer va svetodiodni qisqa chiyillatib tekshirish (100% millis orqali, qotmaydi).
 * **`h`** : Yordam menyusini ko'rish.
 
+### Indikator LED va Buzzer Ishlash Mantig'i:
+* **100% `millis()` asosida ishlaydi:** Dasturda birorta ham qotiruvchi `delay()` yo'q.
+* **Normal rejimda:** Har safar datchik havodan o'lchov olganda (har 800ms) LED qisqa 25ms miltillab "yurak urishi" (heartbeat) belgisini beradi.
+* **Jim turgan holatda:** Buzzer tranzistorining bazasi to'liq 0V (LOW) ga tushirib qo'yiladi. Bu IR LED yonganda tok o'zgarishi hisobiga chiquvchi ortiqcha "tqq" (chertish) shovqinini 100% yo'qotadi!
+* **Xavf (Alarm) rejimida:** ISO 8201 / T3 standarti bo'yicha uzluksiz va jarangdor 3 qisqa signal va tanaffus bilan chalinadi.
+
 ### BOOT tugmasi vazifalari (XIAO platasidagi):
-* **Qisqa bosish (< 1 soniya):** Buzzer va LED test signali beradi.
-* **Uzoq bosish (> 3 soniya):** Kamerani avtomatik kalibratsiya qiladi va toza havo qiymatini xotiraga (NVS flash) saqlaydi.
+* **Qisqa bosish (< 2.5 soniya):** Buzzer va LED test signali (Test Chirp).
+* **Uzoq bosish (> 3 soniya):** Kamerani toza havoda avtomatik kalibratsiya qiladi va toza havo qiymatini xotiraga (NVS flash) saqlaydi.
 
 ---
 

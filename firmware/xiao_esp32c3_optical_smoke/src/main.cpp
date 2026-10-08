@@ -62,10 +62,22 @@ void handleSerialCommands() {
             setSmokeThreshold(th);
             break;
         }
+        case '1':
+            setBuzzerMode(BUZZER_MODE_TONE_2700);
+            break;
+        case '2':
+            setBuzzerMode(BUZZER_MODE_TONE_4000);
+            break;
+        case '3':
+            setBuzzerMode(BUZZER_MODE_DC_HIGH);
+            break;
+        case '4':
+            setBuzzerMode(BUZZER_MODE_DC_LOW);
+            break;
         case 't':
         case 'T':
-            Serial.println("[Manual Test] Triggering test chirp...");
-            playTestChirp();
+            Serial.println("[Manual Test] Triggering test chirp (non-blocking)...");
+            triggerTestChirpNonBlocking(120);
             break;
         case 'h':
         case '?':
@@ -73,6 +85,10 @@ void handleSerialCommands() {
             Serial.println("  'c' : Calibrate clean air baseline");
             Serial.println("  '+' : Increase alarm threshold (+50 ADC)");
             Serial.println("  '-' : Decrease alarm threshold (-50 ADC)");
+            Serial.println("  '1' : Set Buzzer to Tone 2.7 kHz (Standard Piezo Resonance)");
+            Serial.println("  '2' : Set Buzzer to Tone 4.0 kHz (High Pitch Resonance)");
+            Serial.println("  '3' : Set Buzzer to DC Active (HIGH = ON, LOW = OFF)");
+            Serial.println("  '4' : Set Buzzer to DC Active (LOW = ON, HIGH = OFF)");
             Serial.println("  't' : Test chirp buzzer & LED");
             Serial.println("  'h' : Show this help menu");
             Serial.println("==================================\n");
@@ -86,29 +102,35 @@ void handleSerialCommands() {
 // Onboard Button Handler (Short Press = Test, Long Press > 3s = Calibrate)
 // -----------------------------------------------------------------------------
 void handleButton() {
+    static uint32_t pressStart = 0;
+    static bool isPressed = false;
+
     if (digitalRead(PIN_TEST_BTN) == LOW) {
-        delay(50); // Debounce
-        if (digitalRead(PIN_TEST_BTN) == LOW) {
-            uint32_t pressStart = millis();
-            while (digitalRead(PIN_TEST_BTN) == LOW) {
-                if (millis() - pressStart > 3000) {
-                    Serial.println("[Button] Long press detected -> Starting Calibration!");
-                    calibrateCleanAirBaseline(30);
-                    while (digitalRead(PIN_TEST_BTN) == LOW) { delay(50); }
-                    return;
-                }
-                delay(20);
+        if (!isPressed) {
+            isPressed = true;
+            pressStart = millis();
+        } else {
+            if (millis() - pressStart > 3000) {
+                Serial.println("[Button] Long press detected -> Starting Calibration!");
+                calibrateCleanAirBaseline(30);
+                pressStart = millis() + 10000; // prevent repeated triggers while held
             }
-            // Short press: Test chirp
-            Serial.println("[Button] Short press -> Sounder Test!");
-            playTestChirp();
+        }
+    } else {
+        if (isPressed) {
+            uint32_t elapsed = millis() - pressStart;
+            if (elapsed > 50 && elapsed < 2500) {
+                Serial.println("[Button] Short press -> Sounder Test!");
+                triggerTestChirpNonBlocking(120);
+            }
+            isPressed = false;
         }
     }
 }
 
 void setup() {
     Serial.begin(115200);
-    delay(2000); // Wait for USB CDC connection
+    delay(1500); // Wait for USB CDC connection
 
     Serial.println("\n======================================================================");
     Serial.println("  SEEED XIAO ESP32-C3 OPTICAL SMOKE DETECTOR FIRMWARE");
@@ -134,8 +156,8 @@ void setup() {
     BLEDevice::init(BLE_DEVICE_NAME);
     Serial.println("[BLE] Radio Initialized. Name: " BLE_DEVICE_NAME);
 
-    // Play startup chirp
-    playTestChirp();
+    // Play startup chirp (non-blocking)
+    triggerTestChirpNonBlocking(100);
     Serial.println("[System] Ready. Type 'h' in Serial Monitor for command options.\n");
 }
 
@@ -144,23 +166,29 @@ void loop() {
     handleButton();
 
     uint32_t now = millis();
+
+    // 1. Continuous Sounder & LED state machine update (100% non-blocking millis)
+    updateAlarmSounder(alarmState);
+
+    // 2. Periodic Optical Smoke Chamber Sample
     uint32_t sampleRate = alarmState ? SAMPLE_INTERVAL_ALARM_MS : SAMPLE_INTERVAL_NORMAL_MS;
 
-    // Periodic Optical Smoke Chamber Sample
     if (now - lastSampleMs >= sampleRate) {
         lastSampleMs = now;
 
         OpticalReading r = sampleOpticalChamber();
         alarmState = r.isAlarm;
 
+        // Non-blocking LED heartbeat flash on each normal sample
+        if (!r.isAlarm) {
+            triggerLedPulse(25);
+        }
+
         // Print telemetry report
         Serial.printf("[OPTICAL] Amb: %4d | Pls: %4d | RawΔ: %4d | NetSmoke: %4d | PPM: %5.1f | Thresh: %4d | %s\n",
                       r.ambientAdc, r.pulseAdc, r.rawDelta, r.netSmokeSignal,
                       r.estimatedPpm, getSmokeThreshold(),
                       r.isAlarm ? ">>> ALARM CRITICAL! <<<" : "OK (Normal)");
-
-        // Manage buzzer / LED fire alarm sounder
-        updateAlarmSounder(r.isAlarm);
 
         // Manage BLE Beacon Transmission
         uint32_t beaconInterval = r.isAlarm ? (BLE_BEACON_INTERVAL_ALARM * 1000)
@@ -173,5 +201,5 @@ void loop() {
     }
 
     // Small yield for background FreeRTOS tasks & watchdog
-    delay(10);
+    delay(5);
 }
