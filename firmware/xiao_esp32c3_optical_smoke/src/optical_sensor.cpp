@@ -144,12 +144,16 @@ static void soundBuzzerDirect(bool state) {
     }
 }
 
+static void setStatusLed(bool on) {
+    digitalWrite(PIN_STATUS_LED, on ? STATUS_LED_ACTIVE_LEVEL : !STATUS_LED_ACTIVE_LEVEL);
+}
+
 void initAlarmSounder() {
     pinMode(PIN_ALARM_BUZZER, OUTPUT);
     soundBuzzerDirect(false);
 
     pinMode(PIN_STATUS_LED, OUTPUT);
-    digitalWrite(PIN_STATUS_LED, LOW);
+    setStatusLed(false);
 }
 
 /**
@@ -161,7 +165,7 @@ void updateAlarmSounder(bool isAlarm) {
 
     if (!isAlarm) {
         soundBuzzerDirect(false);
-        digitalWrite(PIN_STATUS_LED, LOW);
+        setStatusLed(false);
         patternStartMs = 0;
         return;
     }
@@ -188,13 +192,13 @@ void updateAlarmSounder(bool isAlarm) {
     }
 
     soundBuzzerDirect(beepOn);
-    digitalWrite(PIN_STATUS_LED, beepOn ? HIGH : LOW);
+    setStatusLed(beepOn);
 }
 
 void playTestChirp() {
     soundBuzzerDirect(true);
-    digitalWrite(PIN_STATUS_LED, HIGH);
+    setStatusLed(true);
     delay(100);
     soundBuzzerDirect(false);
-    digitalWrite(PIN_STATUS_LED, LOW);
+    setStatusLed(false);
 }

@@ -23,19 +23,21 @@ Oddiy tutun datchiklarida qora labirint kamera (smoke optical chamber) bo'ladi:
 
 | XIAO ESP32-C3 Oyog'i | GPIO | 8-Oyoqli Plata / Sensor Vazifasi | Izoh |
 | :--- | :--- | :--- | :--- |
-| **D0 / A0** | `GPIO2` | **Fotodiod / Qabul qiluvchi (RX)** | Analog kirish (ADC1_CH2). Fotodiod kuchlanishini o'qiydi. |
-| **D1 / A1** | `GPIO3` | **IR LED Transmit (TX)** | Tranzistor yoki to'g'ridan-to'g'ri IR LED katod/anodini boshqaradi. |
-| **D2 / A2** | `GPIO4` | **Buzzer / Pyezo Siren** | Ovozli signalizator (tranzistor bazasiga yoki pyezo ga). |
-| **D3 / A3** | `GPIO5` | **Status LED** | Platadagi qizil/ko'k miltillovchi svetodiod. |
+| **D1 / A1** | `GPIO3` | **Fotodiod / Qabul qiluvchi (RX)** | Analog kirish (`ADC1_CH3`). D0 (GPIO2) strapping pin xatoligini oldini olish uchun D1 ga o'tkazildi. |
+| **D2 / A2** | `GPIO4` | **IR LED Transmit (TX)** | Tranzistor yoki to'g'ridan-to'g'ri IR LED katod/anodini strob bilan yoqadi. |
+| **D3 / A3** | `GPIO5` | **Buzzer / Pyezo Siren** | Tranzistor orqali aktiv buzzer boshqaruvi (**Teskari logika: LOW = Ovoz, HIGH = Jimlik**). |
+| **D4** | `GPIO6` | **Status Indikator LED** | Platadagi svetodiod (**Teskari logika: LOW = Yoniq, HIGH = O'chiq**). |
 | **D9** | `GPIO9` | **Test / Calibrate Tugmasi** | XIAO platasidagi tayyor BOOT tugmasi (yoki platadagi Test tugma). |
+| **D0 / A0** | `GPIO2` | *Bo'sh (Ulangan emas)* | ESP32-C3 yuklash (upload/strapping) mojaroni bartaraf etish uchun bo'sh qoldirildi. |
 | **3V3** | `3.3V` | **VCC (Quvvat)** | Datchik platasidagi 3.3V quvvat liniyasi. |
 | **GND** | `GND` | **GND (Umumiy yer)** | Batareya minus va umumiy yer. |
 
 > [!TIP]
 > **8-oyoqli platani tekshirish bo'yicha maslahat:**
-> 1. Multimetrning uzluksizlik (prozvonka) rejimida datchikning **IR LED** oyoqlarini toping. Bir oyog'i qarshilik orqali VCC/GND ga, ikkinchi oyog'i mikrosxema oyoqlaridan biriga (yoki tranzistor orqali) ulangan bo'ladi. Shu oyoqni XIAO ning **D1** ga ulang.
-> 2. Qora optik qabul qiluvchi (fotodiod) oyoqlaridan birini kuzating — u mikrosxemaning analog oyog'iga boradi. Shu oyoqni XIAO ning **D0** ga ulang.
-> 3. Buzzerning ikkita simidan biri mikrosxema oyog'iga (yoki S8050 tranzistor bazasiga) boradi. Shu oyoqni XIAO ning **D2** ga ulang.
+> 1. Qora optik qabul qiluvchi (fotodiod) oyoqlaridan birini kuzating — u mikrosxemaning analog oyog'iga boradi. Shu oyoqni XIAO ning **D1** ga ulang.
+> 2. Multimetrning uzluksizlik (prozvonka) rejimida datchikning **IR LED** oyoqlarini toping. Bir oyog'i qarshilik orqali VCC/GND ga, ikkinchi oyog'i mikrosxema oyoqlaridan biriga (yoki tranzistor orqali) ulangan bo'ladi. Shu oyoqni XIAO ning **D2** ga ulang.
+> 3. Aktiv buzzer tranzistorining boshqaruv oyoqchasini XIAO ning **D3** ga ulang (kodda tranzistor uchun LOW signali beriladi).
+> 4. Indikator svetodiodni XIAO ning **D4** ga ulang (kodda teskari logika: LOW = Yoniq, HIGH = O'chiq).
 
 ---
 
