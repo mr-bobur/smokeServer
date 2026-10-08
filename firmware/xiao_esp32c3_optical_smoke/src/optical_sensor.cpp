@@ -139,35 +139,54 @@ static bool ledPulseActive = false;
 static uint32_t testChirpOffAtMs = 0;
 static bool testChirpActive = false;
 
+static bool currentBuzzerState = false;
+static bool isToneActive = false;
+static bool currentLedState = false;
+
+static void setStatusLed(bool on) {
+    if (on == currentLedState) return;
+    currentLedState = on;
+    digitalWrite(PIN_STATUS_LED, on ? STATUS_LED_ACTIVE_LEVEL : !STATUS_LED_ACTIVE_LEVEL);
+}
+
 static void soundBuzzerDirect(bool state) {
+    if (state == currentBuzzerState) {
+        return; // State unchanged: skip completely to prevent Tone/GPIO spam
+    }
+    currentBuzzerState = state;
+
     if (state) {
         switch (currentBuzzerMode) {
             case BUZZER_MODE_TONE_2700:
                 tone(PIN_ALARM_BUZZER, 2700);
+                isToneActive = true;
                 break;
             case BUZZER_MODE_TONE_4000:
                 tone(PIN_ALARM_BUZZER, 4000);
+                isToneActive = true;
                 break;
             case BUZZER_MODE_DC_HIGH:
+                pinMode(PIN_ALARM_BUZZER, OUTPUT);
                 digitalWrite(PIN_ALARM_BUZZER, HIGH);
                 break;
             case BUZZER_MODE_DC_LOW:
+                pinMode(PIN_ALARM_BUZZER, OUTPUT);
                 digitalWrite(PIN_ALARM_BUZZER, LOW);
                 break;
         }
     } else {
-        noTone(PIN_ALARM_BUZZER);
-        // Ensure transistor is completely OFF in silent state (0V LOW for Tone & DC_HIGH)
+        if (isToneActive) {
+            noTone(PIN_ALARM_BUZZER);
+            isToneActive = false;
+        }
+        // Restore GPIO mode after noTone and ensure transistor is turned OFF
+        pinMode(PIN_ALARM_BUZZER, OUTPUT);
         if (currentBuzzerMode == BUZZER_MODE_DC_LOW) {
             digitalWrite(PIN_ALARM_BUZZER, HIGH);
         } else {
             digitalWrite(PIN_ALARM_BUZZER, LOW);
         }
     }
-}
-
-static void setStatusLed(bool on) {
-    digitalWrite(PIN_STATUS_LED, on ? STATUS_LED_ACTIVE_LEVEL : !STATUS_LED_ACTIVE_LEVEL);
 }
 
 void triggerLedPulse(uint16_t durationMs) {
@@ -184,14 +203,17 @@ void triggerTestChirpNonBlocking(uint16_t durationMs) {
 }
 
 void initAlarmSounder() {
-    pinMode(PIN_ALARM_BUZZER, OUTPUT);
-    soundBuzzerDirect(false);
-
     pinMode(PIN_STATUS_LED, OUTPUT);
+    currentLedState = true;
     setStatusLed(false);
+
+    pinMode(PIN_ALARM_BUZZER, OUTPUT);
+    currentBuzzerState = true; // Force initial transition to false
+    soundBuzzerDirect(false);
 }
 
 void setBuzzerMode(BuzzerMode mode) {
+    soundBuzzerDirect(false); // Stop prior mode cleanly
     currentBuzzerMode = mode;
     prefs.putInt("buzzer_mode", (int)mode);
     Serial.printf("[Config] Buzzer Mode changed to: %s\n", getBuzzerModeName());
