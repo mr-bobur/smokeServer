@@ -190,13 +190,19 @@ void loop() {
                       r.estimatedPpm, getSmokeThreshold(),
                       r.isAlarm ? ">>> ALARM CRITICAL! <<<" : "OK (Normal)");
 
-        // Manage BLE Beacon Transmission
-        uint32_t beaconInterval = r.isAlarm ? (BLE_BEACON_INTERVAL_ALARM * 1000)
-                                            : (BLE_BEACON_INTERVAL_NORMAL * 1000);
-
-        if (now - lastBeaconMs >= beaconInterval) {
-            lastBeaconMs = now;
-            broadcastBleTelemetry(BLE_MFG_TYPE_SMOKE, 100, (uint16_t)r.estimatedPpm, r.isAlarm);
+        // Manage BLE Beacon Transmission: ONLY broadcast when smoke is detected!
+        if (r.isAlarm) {
+            uint32_t beaconInterval = (BLE_BEACON_INTERVAL_ALARM * 1000);
+            if (now - lastBeaconMs >= beaconInterval) {
+                lastBeaconMs = now;
+                broadcastBleTelemetry(BLE_MFG_TYPE_SMOKE, 100, (uint16_t)r.estimatedPpm, true);
+            }
+        } else {
+            // When clean air, advertising is silent
+            if (lastBeaconMs != 0) {
+                BLEDevice::getAdvertising()->stop();
+                lastBeaconMs = 0;
+            }
         }
     }
 
