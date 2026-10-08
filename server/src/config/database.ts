@@ -393,62 +393,17 @@ class DigitalTwinDatabase {
       }
     ];
 
-    // 2. Seed Central Gateways (SIM7670 4G LTE Cat 1)
+    // 2. Seed Central Gateways (Real Hardware: LilyGO T-Call SIM800L)
     this.gateways = [
       {
         id: 1,
-        building_id: 1,
-        building_name: 'Nest One Residence - Block B',
-        serial_number: 'GW-SIM7670-TASH-01',
-        mac_address: 'B4:E6:2D:90:01:01',
-        imei: '869482059114028',
-        sim_operator: 'Uztelecom GSM / LTE',
-        firmware_version: 'v3.4.2-LTE',
-        rssi_dbm: -59,
-        status: 'online',
-        pairing_mode_active: false,
-        last_seen: nowIso,
-        created_at: nowIso
-      },
-      {
-        id: 2,
-        building_id: 2,
-        building_name: 'Tashkent City Boulevard Plaza',
-        serial_number: 'GW-SIM7670-TASH-02',
-        mac_address: 'B4:E6:2D:90:02:02',
-        imei: '869482059118891',
-        sim_operator: 'Ucell 4G LTE',
-        firmware_version: 'v3.4.2-LTE',
-        rssi_dbm: -63,
-        status: 'online',
-        pairing_mode_active: false,
-        last_seen: nowIso,
-        created_at: nowIso
-      },
-      {
-        id: 3,
-        building_id: 3,
-        building_name: 'Samarkand Regency Smart Tower',
-        serial_number: 'GW-SIM7670-SAM-03',
-        mac_address: 'B4:E6:2D:90:03:03',
-        imei: '869482059119904',
-        sim_operator: 'Mobiuz LTE',
-        firmware_version: 'v3.4.1-LTE',
-        rssi_dbm: -66,
-        status: 'online',
-        pairing_mode_active: false,
-        last_seen: nowIso,
-        created_at: nowIso
-      },
-      {
-        id: 4,
         building_id: 1,
         building_name: 'Nest One Residence - Block B',
         serial_number: 'GW-LILYGO-TCALL-SIM800',
         mac_address: 'B4:E6:2D:80:C3:01',
         imei: '869482059114099',
         sim_operator: 'Uztelecom GSM / 43408',
-        firmware_version: 'v1.0.0-TCall-SIM800L',
+        firmware_version: 'SIM800L_2G',
         rssi_dbm: -51,
         status: 'online',
         pairing_mode_active: false,
@@ -471,34 +426,6 @@ class DigitalTwinDatabase {
         tenant_email: 'shirkat@smartbuilding.uz',
         tenant_phone: '+998712000000',
         gateway_id: 1,
-        created_at: nowIso
-      },
-      {
-        id: 2,
-        code: 'SMART-BLD-BOULEVARD-09',
-        name: 'Tashkent City Boulevard Plaza',
-        address: 'Furkat Street 4B, Shaykhantakhur',
-        city: 'Tashkent',
-        total_floors: 9,
-        tenant_user_id: 6,
-        tenant_name: 'Rustam Sobirov (Boulevard Shirkat)',
-        tenant_email: 'boulevard.shirkat@smartbuilding.uz',
-        tenant_phone: '+998712055566',
-        gateway_id: 2,
-        created_at: nowIso
-      },
-      {
-        id: 3,
-        code: 'SMART-BLD-SAMARKAND-05',
-        name: 'Samarkand Regency Smart Tower',
-        address: 'Registan Street 19, Block A',
-        city: 'Samarkand',
-        total_floors: 5,
-        tenant_user_id: 2,
-        tenant_name: 'Dilshod Karimov (Nest One Shirkat)',
-        tenant_email: 'shirkat@smartbuilding.uz',
-        tenant_phone: '+998712000000',
-        gateway_id: 3,
         created_at: nowIso
       }
     ];
@@ -741,134 +668,74 @@ class DigitalTwinDatabase {
             };
             this.rooms.push(roomRecord);
 
-            for (const s of rm.sensors) {
-              const hexSuffix = ((sensorIdCounter * 2654435761) >>> 0)
-                .toString(16)
-                .toUpperCase()
-                .padStart(8, '0')
-                .slice(0, 6);
-              const chipId = s.customChip || `C3-B${bld.id}F${f}${hexSuffix}`;
-              const decoded = decodeIntroPacket({
-                chip_id: chipId,
-                type_byte: s.typeByte
-              });
-
-              const primaryVal =
-                decoded.sensor_type === 'SMOKE_MQ2'
-                  ? Number(s.smoke.toFixed(1))
-                  : decoded.sensor_type === 'TEMP_DS18B20'
-                    ? Number(s.temp.toFixed(1))
-                    : decoded.sensor_type === 'CO_MQ7'
-                      ? Number(s.co.toFixed(1))
-                      : decoded.sensor_type === 'DOOR_REED'
-                        ? s.reed
-                        : s.glass;
-
-              const rssiVal = -61 - ((sensorIdCounter * 3) % 21);
-              const parentNodeId = hasSubHub ? hubCode : `GW-SIM7670-TASH-0${bld.id}`;
-              const armPerim = rm.perimeter !== 'disarmed';
-
-              const sensorRecord: SensorEndpointRecord = {
-                id: sensorIdCounter++,
-                building_id: bld.id,
-                room_id: roomRecord.id,
-                room_number: roomRecord.room_number,
-                floor_id: floorRecord.id,
-                floor_number: f,
-                chip_id: chipId,
-                profile_code: decoded.profile_code,
-                sensor_type: decoded.sensor_type,
-                intro_packet_hex: decoded.intro_packet_hex,
-                intro_type_byte: decoded.intro_type_byte,
-                parent_link_type: hasSubHub ? 'FLOOR_HUB' : 'CENTRAL_GATEWAY',
-                parent_node_id: parentNodeId,
-                status: s.status,
-                coord_x: s.dx,
-                coord_y: s.dy,
-                battery_level: s.battery,
-                beacon_interval_seconds: 600,
-                smoke_threshold_ppm: 400,
-                temp_threshold_c: 60,
-                arm_perimeter: armPerim,
-                primary_value: primaryVal,
-                primary_unit: decoded.primary_unit,
-                smoke_ppm: Number(s.smoke.toFixed(1)),
-                co_ppm: Number(s.co.toFixed(1)),
-                temperature: Number(s.temp.toFixed(1)),
-                reed_switch_open: s.reed,
-                glass_break_detected: s.glass,
-                rssi_dbm: rssiVal,
-                attributes: buildDeviceAttributesBundle({
-                  chip_id: chipId,
-                  intro_packet_hex: decoded.intro_packet_hex,
-                  intro_type_byte: decoded.intro_type_byte,
-                  rssi_dbm: rssiVal,
-                  parent_node_id: parentNodeId,
-                  beacon_interval_seconds: 600,
-                  smoke_threshold_ppm: 400,
-                  temp_threshold_c: 60,
-                  arm_perimeter: armPerim,
-                  building_id: bld.id,
-                  floor_id: floorRecord.id,
-                  room_id: roomRecord.id,
-                  coord_x: s.dx,
-                  coord_y: s.dy,
-                  claimed_by_user_id: rm.owner_user_id,
-                  claimed_at: rm.owner_user_id ? nowIso : null,
-                  nowIso
-                }),
-                claimed_by_user_id: rm.owner_user_id,
-                claimed_at: rm.owner_user_id ? nowIso : null,
-                last_seen: nowIso,
-                created_at: nowIso
-              };
-              this.sensors.push(sensorRecord);
-            }
           }
         }
       }
     }
 
-    // 5. Seed Historical Stateful Alarm Events Archive (ThingsBoard Alarm Lifecycle)
-    const apt42Sensor = this.sensors.find((s) => s.chip_id === 'C3-9A4F22B8') || this.sensors[0];
-    this.alarmEvents = [
-      {
-        id: 1,
+    // 5. Seed ONLY Real Working Hardware Endpoints (Xiao ESP32-C3 Optical Smoke Sensor)
+    const apt11Room = this.rooms.find((r) => r.room_number === 'Apt 11') || this.rooms[0];
+    const floor1 = this.floors.find((f) => f.floor_number === 1) || this.floors[0];
+
+    const realSmokeSensor: SensorEndpointRecord = {
+      id: 1,
+      building_id: 1,
+      room_id: apt11Room ? apt11Room.id : 1,
+      room_number: apt11Room ? apt11Room.room_number : 'Apt 11',
+      floor_id: floor1 ? floor1.id : 1,
+      floor_number: 1,
+      chip_id: 'C3-D04589043254',
+      profile_code: 'PROFILE_SMOKE_MQ2',
+      sensor_type: 'SMOKE_MQ2',
+      intro_packet_hex: 'AA FF D0 45 89 04 01 64 C4 9B 55',
+      intro_type_byte: '0x01',
+      parent_link_type: 'CENTRAL_GATEWAY',
+      parent_node_id: 'GW-LILYGO-TCALL-SIM800',
+      status: 'online',
+      coord_x: 24,
+      coord_y: 22,
+      battery_level: 100,
+      beacon_interval_seconds: 5,
+      smoke_threshold_ppm: 400,
+      temp_threshold_c: 60,
+      arm_perimeter: false,
+      primary_value: 15.0,
+      primary_unit: 'PPM',
+      smoke_ppm: 15.0,
+      co_ppm: 4.2,
+      temperature: 24.5,
+      reed_switch_open: false,
+      glass_break_detected: false,
+      rssi_dbm: -51,
+      attributes: buildDeviceAttributesBundle({
+        chip_id: 'C3-D04589043254',
+        intro_packet_hex: 'AA FF D0 45 89 04 01 64 C4 9B 55',
+        intro_type_byte: '0x01',
+        rssi_dbm: -51,
+        parent_node_id: 'GW-LILYGO-TCALL-SIM800',
+        beacon_interval_seconds: 5,
+        smoke_threshold_ppm: 400,
+        temp_threshold_c: 60,
+        arm_perimeter: false,
         building_id: 1,
-        alarm_code: 'ALM-20260918-104',
-        sensor_id: apt42Sensor.id,
-        chip_id: apt42Sensor.chip_id,
-        floor_number: 4,
-        room_number: 'Apt 42',
-        event_type: 'SMOKE_CRITICAL',
-        severity: 'warning',
-        status: 'acknowledged',
-        lifecycle_state: 'CLEARED_ACK',
-        trigger_count: 3,
-        peak_value: 412.0,
-        smoke_val: 412.0,
-        temp_val: 48.5,
-        co_val: 19.2,
-        acknowledged_by: 2,
-        acknowledged_by_name: 'Dilshod Karimov (Nest One Shirkat)',
-        acknowledged_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-        cleared_at: new Date(Date.now() - 86400000 * 3 + 60000).toISOString(),
-        comments: [
-          {
-            id: 'CMT-101',
-            user_id: 2,
-            user_name: 'Dilshod Karimov (Nest One Shirkat)',
-            comment: 'Oshxonada ovqat tutuni aniqlangan, xonadon egasi bilan bog‘lanildi va shamollatildi.',
-            created_at: new Date(Date.now() - 86400000 * 3).toISOString()
-          }
-        ],
-        emergency_112_payload: null,
-        emergency_112_dispatched_at: null,
-        emergency_112_response: null,
-        created_at: new Date(Date.now() - 86400000 * 3 - 25000).toISOString(),
-        updated_at: new Date(Date.now() - 86400000 * 3 + 60000).toISOString()
-      }
-    ];
+        floor_id: floor1 ? floor1.id : 1,
+        room_id: apt11Room ? apt11Room.id : 1,
+        coord_x: 24,
+        coord_y: 22,
+        claimed_by_user_id: null,
+        claimed_at: null,
+        nowIso
+      }),
+      claimed_by_user_id: null,
+      claimed_at: null,
+      last_seen: nowIso,
+      created_at: nowIso
+    };
+
+    this.sensors = [realSmokeSensor];
+
+    // Real-only mode: Start with no fake alarms
+    this.alarmEvents = [];
 
     // 6. Seed Initial RPC Command Queue Log
     this.rpcCommands = [

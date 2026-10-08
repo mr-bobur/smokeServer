@@ -22,7 +22,10 @@ import {
   Eye,
   Shield,
   Sliders,
-  X
+  X,
+  Search,
+  Filter,
+  ChevronLeft
 } from 'lucide-react';
 import { API_BASE, getAuthHeaders, useFloorData } from '../../../hooks/useFloorData';
 import { BlueprintViewer } from '../../../components/map/BlueprintViewer';
@@ -107,7 +110,15 @@ export default function SuperAdminDashboardPage() {
   // Selected sensor for ThingsBoard 3-Scope Attributes & Telemetry drawer
   const [selectedSensor, setSelectedSensor] = useState<SensorEndpointData | null>(null);
   const [customAtCmd, setCustomAtCmd] = useState<string>('AT+CSQ');
+  const [selectedAtGatewayId, setSelectedAtGatewayId] = useState<string>('GW-LILYGO-TCALL-SIM800');
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+
+  // Endpoints Table Search & Pagination States
+  const [endpointSearch, setEndpointSearch] = useState<string>('');
+  const [endpointTypeFilter, setEndpointTypeFilter] = useState<string>('ALL');
+  const [endpointStatusFilter, setEndpointStatusFilter] = useState<string>('ALL');
+  const [endpointPage, setEndpointPage] = useState<number>(1);
+  const [endpointPageSize, setEndpointPageSize] = useState<number>(10);
 
   // ============================================================================
   // CRUD MODAL STATES (+ Add / Pencil Edit)
@@ -519,14 +530,16 @@ export default function SuperAdminDashboardPage() {
   const handleSendAtCommand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customAtCmd.trim()) return;
+    const targetGw = selectedAtGatewayId || 'GW-LILYGO-TCALL-SIM800';
     const res = await fetch(`${API_BASE}/api/emergency/sim7670/at`, {
       method: 'POST',
       headers: getAuthHeaders('super_admin'),
-      body: JSON.stringify({ command: customAtCmd })
+      body: JSON.stringify({ command: customAtCmd, gateway_id: targetGw })
     });
     if (res.ok) {
       const data = await res.json();
       setSim7670(data.gateway);
+      showNotice(`[${targetGw}] "${customAtCmd}" buyrug'i jo'natildi.`);
       setCustomAtCmd('');
     }
   };
@@ -1315,38 +1328,136 @@ export default function SuperAdminDashboardPage() {
               </table>
             </div>
 
-            {/* SIM7670 AT Diagnostics Terminal */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-emerald-400" />
-                  SIM7670G 4G LTE Modem AT-Command Console
-                </h3>
-                <span className="text-xs font-mono text-emerald-400">
-                  IMEI: {sim7670?.imei} • {sim7670?.rssi_dbm} dBm
-                </span>
-              </div>
-              <div className="h-36 rounded-xl bg-slate-950 border border-slate-800 p-3 font-mono text-[11px] overflow-y-auto space-y-1">
-                {(sim7670?.at_logs || []).map((log, i) => (
-                  <div key={i}>
-                    <span className="text-sky-400">&gt; {log.tx}</span>{' '}
-                    <span className="text-emerald-400">→ {log.rx}</span>
+            {/* AT Command & Modem Diagnostics Terminal */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <Terminal className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Gateway AT-Command & Modem Terminali
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Shlyuz modemiga to‘g‘ridan-to‘g‘ri AT buyruqlarini jo‘natish va diagnostika qilish
+                    </p>
                   </div>
+                </div>
+
+                {/* Gateway Selector Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Signal className="w-3.5 h-3.5 text-sky-400" /> Shlyuzni tanlang:
+                  </label>
+                  <select
+                    value={selectedAtGatewayId}
+                    onChange={(e) => setSelectedAtGatewayId(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-sky-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner"
+                  >
+                    {(devicesInventory?.gateways || []).map((gw) => (
+                      <option key={gw.serial_number} value={gw.serial_number}>
+                        {gw.serial_number} ({gw.sim_operator} • {gw.status.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Selected Gateway Live Hardware Specs Card */}
+              {(() => {
+                const activeGw =
+                  (devicesInventory?.gateways || []).find((g) => g.serial_number === selectedAtGatewayId) ||
+                  (devicesInventory?.gateways || [])[0];
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 font-mono text-xs">
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase">SHLYUZ / MODEL</div>
+                      <div className="font-bold text-white truncate">
+                        {activeGw?.serial_number || 'GW-LILYGO-TCALL-SIM800'}
+                      </div>
+                      <div className="text-[10px] text-sky-400 font-bold">{activeGw?.firmware_version || 'SIM800L_2G'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase">IMEI / MAC</div>
+                      <div className="text-slate-300 truncate">{activeGw?.imei || '869482059114099'}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{activeGw?.mac_address}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase">OPERATOR / SIGNAL</div>
+                      <div className="text-sky-300 font-bold">{activeGw?.sim_operator || 'Uztelecom'}</div>
+                      <div className="text-emerald-400 font-bold">{activeGw?.rssi_dbm} dBm</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase">TARMOQ HOLATI</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-2 h-2 rounded-full ${activeGw?.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                        <span className={`text-[11px] font-bold uppercase ${activeGw?.status === 'online' ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {activeGw?.status || 'ONLINE'}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        So‘nggi aloqa: {activeGw?.last_seen ? new Date(activeGw.last_seen).toLocaleTimeString() : 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* AT Logs Output Terminal */}
+              <div className="h-40 rounded-xl bg-slate-950 border border-slate-800 p-3.5 font-mono text-[11px] overflow-y-auto space-y-1.5 shadow-inner">
+                {(sim7670?.at_logs || []).length === 0 ? (
+                  <div className="text-slate-500 italic">AT jurnallari hozircha bo‘sh. Buyruq yuboring.</div>
+                ) : (
+                  (sim7670?.at_logs || []).map((log, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="text-sky-400 font-bold">&gt; {log.tx}</span>
+                      <span className="text-emerald-400 font-medium">→ {log.rx}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Quick AT Preset Buttons */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 font-semibold mr-1">Tezkor buyruqlar:</span>
+                {[
+                  { label: 'Signal (CSQ)', cmd: 'AT+CSQ' },
+                  { label: 'SIM Holati', cmd: 'AT+CPIN?' },
+                  { label: 'Operator', cmd: 'AT+COPS?' },
+                  { label: 'GPRS Holati', cmd: 'AT+CGATT?' },
+                  { label: 'Modem Info', cmd: 'ATI' },
+                  { label: 'Tarmoq Registratsiyasi', cmd: 'AT+CREG?' },
+                  { label: 'Batareya/Voltaj', cmd: 'AT+CBC' }
+                ].map((preset) => (
+                  <button
+                    key={preset.cmd}
+                    type="button"
+                    onClick={() => {
+                      setCustomAtCmd(preset.cmd);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-mono border border-slate-700 transition"
+                  >
+                    {preset.cmd}
+                  </button>
                 ))}
               </div>
+
+              {/* AT Command Input Form */}
               <form onSubmit={handleSendAtCommand} className="flex gap-2">
                 <input
                   type="text"
                   value={customAtCmd}
                   onChange={(e) => setCustomAtCmd(e.target.value)}
-                  placeholder="AT+CSQ, AT+CMGS, ATD+998..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white"
+                  placeholder="AT buyrug'ini kiriting (masalan: AT+CSQ, AT+CMGS...)"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-sky-600/25 transition active:scale-95"
                 >
-                  <Send className="w-3.5 h-3.5" /> SEND AT
+                  <Send className="w-3.5 h-3.5" /> Yuborish (SEND)
                 </button>
               </form>
             </div>
@@ -1493,94 +1604,303 @@ export default function SuperAdminDashboardPage() {
               ))}
             </div>
 
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs font-mono">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 uppercase">
-                    <th className="py-3 px-2">CHIP ID</th>
-                    <th className="py-3 px-2">SENSOR TIPI (AVTO-ANIQLANGAN)</th>
-                    <th className="py-3 px-2">INTRO PAKET HEX</th>
-                    <th className="py-3 px-2">OTA TUGUN (HUB/GW)</th>
-                    <th className="py-3 px-2">JOYLASHUV (BINO/QAVAT/UY)</th>
-                    <th className="py-3 px-2">QIYMAT</th>
-                    <th className="py-3 px-2">SYNC</th>
-                    <th className="py-3 px-2 text-right">CRUD AMALLAR</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {(devicesInventory?.end_devices || []).slice(0, 80).map((dev) => (
-                    <tr key={dev.id} className="text-slate-200 hover:bg-slate-800/40">
-                      <td className="py-2.5 px-2 font-bold text-sky-400">{dev.chip_id}</td>
-                      <td className="py-2.5 px-2">
-                        <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-bold">
-                          [{dev.intro_type_byte}] {t(`type_${dev.sensor_type}`)}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-emerald-400 text-[11px]">
-                        {dev.intro_packet_hex}
-                      </td>
-                      <td className="py-2.5 px-2 text-amber-300">
-                        {dev.parent_link_type}: {dev.parent_node_id}
-                      </td>
-                      <td className="py-2.5 px-2 text-slate-300">
-                        Bld #{dev.building_id} • Fl {dev.floor_number} • {dev.room_number}
-                      </td>
-                      <td className="py-2.5 px-2 font-bold">
-                        {dev.sensor_type === 'SMOKE_MQ2' && `${dev.smoke_ppm} PPM`}
-                        {dev.sensor_type === 'TEMP_DS18B20' && `${dev.temperature} °C`}
-                        {dev.sensor_type === 'CO_MQ7' && `${dev.co_ppm} PPM`}
-                        {dev.sensor_type === 'DOOR_REED' &&
-                          (dev.reed_switch_open ? 'OPEN' : 'CLOSED')}
-                        {dev.sensor_type === 'GLASS_BREAK' &&
-                          (dev.glass_break_detected ? 'SHATTER' : 'INTACT')}
-                      </td>
-                      <td className="py-2.5 px-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            dev.attributes?.sync_status === 'PENDING_WAKEUP'
-                              ? 'bg-amber-500/20 text-amber-300'
-                              : 'bg-emerald-500/20 text-emerald-300'
-                          }`}
+            {/* Search and Filters Bar */}
+            {(() => {
+              const rawEndpoints = devicesInventory?.end_devices || [];
+              const filteredEndpoints = rawEndpoints.filter((dev) => {
+                if (endpointSearch.trim()) {
+                  const q = endpointSearch.toLowerCase().trim();
+                  const matchChip = dev.chip_id.toLowerCase().includes(q);
+                  const matchRoom = (dev.room_number || '').toLowerCase().includes(q);
+                  const matchFloor = String(dev.floor_number).includes(q);
+                  const matchType = dev.sensor_type.toLowerCase().includes(q);
+                  const matchParent = (dev.parent_node_id || '').toLowerCase().includes(q);
+                  if (!matchChip && !matchRoom && !matchFloor && !matchType && !matchParent) {
+                    return false;
+                  }
+                }
+                if (endpointTypeFilter !== 'ALL' && dev.sensor_type !== endpointTypeFilter) {
+                  return false;
+                }
+                if (endpointStatusFilter !== 'ALL' && dev.status !== endpointStatusFilter) {
+                  return false;
+                }
+                return true;
+              });
+
+              const totalFiltered = filteredEndpoints.length;
+              const totalPages = Math.max(1, Math.ceil(totalFiltered / endpointPageSize));
+              const currentPage = Math.min(endpointPage, totalPages);
+              const paginatedEndpoints = filteredEndpoints.slice(
+                (currentPage - 1) * endpointPageSize,
+                currentPage * endpointPageSize
+              );
+
+              return (
+                <>
+                  <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex-1 min-w-[240px] relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={endpointSearch}
+                        onChange={(e) => {
+                          setEndpointSearch(e.target.value);
+                          setEndpointPage(1);
+                        }}
+                        placeholder="Chip ID (C3-...), Xona (Apt...), Qavat bo‘yicha qidirish..."
+                        className="w-full pl-10 pr-8 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                      {endpointSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEndpointSearch('');
+                            setEndpointPage(1);
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                         >
-                          {dev.attributes?.sync_status || 'SYNCED'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-right">
-                        <div className="inline-flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedSensor(dev)}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-sky-500/20 text-sky-400 border border-slate-700"
-                            title="3-Scope Atributlar & RPC (Inspect)"
-                          >
-                            <Sliders className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditEndpointModal(dev)}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-amber-400 border border-slate-700"
-                            title="Tahrirlash (Ruchka)"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await deleteEndpointDevice(dev.id);
-                              showNotice(`Endpoint "${dev.chip_id}" o'chirildi.`);
-                            }}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-red-400 border border-slate-700"
-                            title="O'chirish (Delete)"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Filter className="w-3.5 h-3.5 text-slate-400" />
+                        <select
+                          value={endpointTypeFilter}
+                          onChange={(e) => {
+                            setEndpointTypeFilter(e.target.value);
+                            setEndpointPage(1);
+                          }}
+                          className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="ALL">Barcha Turlar</option>
+                          <option value="SMOKE_MQ2">Tutun (SMOKE_MQ2)</option>
+                          <option value="TEMP_DS18B20">Harorat (TEMP_DS18B20)</option>
+                          <option value="CO_MQ7">CO Gaz (CO_MQ7)</option>
+                          <option value="DOOR_REED">Eshik / Gerkon (DOOR_REED)</option>
+                          <option value="GLASS_BREAK">Shisha Singishi (GLASS_BREAK)</option>
+                        </select>
+                      </div>
+
+                      <select
+                        value={endpointStatusFilter}
+                        onChange={(e) => {
+                          setEndpointStatusFilter(e.target.value);
+                          setEndpointPage(1);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="ALL">Barcha Holatlar</option>
+                        <option value="online">Online</option>
+                        <option value="alarm">Trevoqa (Alarm)</option>
+                        <option value="warning">Ogohlantirish (Warning)</option>
+                        <option value="offline">Offline</option>
+                      </select>
+
+                      <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-bold font-mono border border-emerald-500/20">
+                        {totalFiltered} ta datchik
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 overflow-x-auto space-y-4">
+                    <table className="w-full text-left border-collapse text-xs font-mono">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400 uppercase">
+                          <th className="py-3 px-2">CHIP ID</th>
+                          <th className="py-3 px-2">SENSOR TIPI</th>
+                          <th className="py-3 px-2">INTRO PAKET HEX</th>
+                          <th className="py-3 px-2">OTA TUGUN (HUB/GW)</th>
+                          <th className="py-3 px-2">JOYLASHUV</th>
+                          <th className="py-3 px-2">QIYMAT</th>
+                          <th className="py-3 px-2">HOLATI / SYNC</th>
+                          <th className="py-3 px-2 text-right">CRUD AMALLAR</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {paginatedEndpoints.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-8 text-center text-slate-500 font-sans text-xs italic">
+                              Hech qanday datchik topilmadi.
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedEndpoints.map((dev) => (
+                            <tr key={dev.id} className="text-slate-200 hover:bg-slate-800/40">
+                              <td className="py-2.5 px-2 font-bold text-sky-400">{dev.chip_id}</td>
+                              <td className="py-2.5 px-2">
+                                <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-bold">
+                                  [{dev.intro_type_byte}] {t(`type_${dev.sensor_type}`)}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 text-emerald-400 text-[11px]">
+                                {dev.intro_packet_hex}
+                              </td>
+                              <td className="py-2.5 px-2 text-amber-300">
+                                {dev.parent_link_type}: {dev.parent_node_id}
+                              </td>
+                              <td className="py-2.5 px-2 text-slate-300">
+                                Bld #{dev.building_id} • Fl {dev.floor_number} • {dev.room_number}
+                              </td>
+                              <td className="py-2.5 px-2 font-bold">
+                                {dev.sensor_type === 'SMOKE_MQ2' && `${dev.smoke_ppm} PPM`}
+                                {dev.sensor_type === 'TEMP_DS18B20' && `${dev.temperature} °C`}
+                                {dev.sensor_type === 'CO_MQ7' && `${dev.co_ppm} PPM`}
+                                {dev.sensor_type === 'DOOR_REED' &&
+                                  (dev.reed_switch_open ? 'OPEN' : 'CLOSED')}
+                                {dev.sensor_type === 'GLASS_BREAK' &&
+                                  (dev.glass_break_detected ? 'SHATTER' : 'INTACT')}
+                              </td>
+                              <td className="py-2.5 px-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      dev.status === 'alarm'
+                                        ? 'bg-red-500/20 text-red-300 border border-red-500/30 animate-pulse'
+                                        : dev.status === 'warning'
+                                          ? 'bg-amber-500/20 text-amber-300'
+                                          : 'bg-emerald-500/20 text-emerald-300'
+                                    }`}
+                                  >
+                                    {dev.status.toUpperCase()}
+                                  </span>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                      dev.attributes?.sync_status === 'PENDING_WAKEUP'
+                                        ? 'bg-amber-500/20 text-amber-300'
+                                        : 'bg-slate-800 text-slate-400'
+                                    }`}
+                                  >
+                                    {dev.attributes?.sync_status || 'SYNCED'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-2 text-right">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSensor(dev)}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-sky-500/20 text-sky-400 border border-slate-700"
+                                    title="3-Scope Atributlar & RPC (Inspect)"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditEndpointModal(dev)}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-amber-400 border border-slate-700"
+                                    title="Tahrirlash (Ruchka)"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      await deleteEndpointDevice(dev.id);
+                                      showNotice(`Endpoint "${dev.chip_id}" o'chirildi.`);
+                                    }}
+                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-red-400 border border-slate-700"
+                                    title="O'chirish (Delete)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+
+                    {/* Pagination Controls */}
+                    {totalFiltered > 0 && (
+                      <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="text-slate-400 font-mono">
+                          Ko‘rsatilmoqda:{' '}
+                          <span className="text-white font-bold">
+                            {(currentPage - 1) * endpointPageSize + 1} -{' '}
+                            {Math.min(currentPage * endpointPageSize, totalFiltered)}
+                          </span>{' '}
+                          / <span className="text-emerald-400 font-bold">{totalFiltered}</span> ta datchik
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 font-mono text-slate-400">
+                            <span>Sahifada:</span>
+                            <select
+                              value={endpointPageSize}
+                              onChange={(e) => {
+                                setEndpointPageSize(Number(e.target.value));
+                                setEndpointPage(1);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold focus:outline-none"
+                            >
+                              <option value={10}>10 ta</option>
+                              <option value={25}>25 ta</option>
+                              <option value={50}>50 ta</option>
+                            </select>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={currentPage <= 1}
+                              onClick={() => setEndpointPage((p) => Math.max(1, p - 1))}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:pointer-events-none border border-slate-700"
+                              title="Oldingi sahifa"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: totalPages }, (_, idx) => idx + 1)
+                                .filter((pageNum) => {
+                                  if (totalPages <= 7) return true;
+                                  if (pageNum === 1 || pageNum === totalPages) return true;
+                                  return Math.abs(pageNum - currentPage) <= 1;
+                                })
+                                .map((pageNum, idx, arr) => {
+                                  const prev = arr[idx - 1];
+                                  const showEllipsis = prev && pageNum - prev > 1;
+                                  return (
+                                    <React.Fragment key={pageNum}>
+                                      {showEllipsis && <span className="px-1 text-slate-600">...</span>}
+                                      <button
+                                        type="button"
+                                        onClick={() => setEndpointPage(pageNum)}
+                                        className={`min-w-[28px] h-7 px-2 rounded-lg font-mono font-bold text-xs transition ${
+                                          currentPage === pageNum
+                                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                                        }`}
+                                      >
+                                        {pageNum}
+                                      </button>
+                                    </React.Fragment>
+                                  );
+                                })}
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={currentPage >= totalPages}
+                              onClick={() => setEndpointPage((p) => Math.min(totalPages, p + 1))}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:pointer-events-none border border-slate-700"
+                              title="Keyingi sahifa"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 

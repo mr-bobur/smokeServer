@@ -3,6 +3,7 @@ import { dbStore } from '../config/database';
 import { emergencyService } from '../services/emergency.service';
 import { sim7670Service } from '../services/sim7670.service';
 import { AlarmEventType, AlarmSeverity, AuthenticatedRequest } from '../types';
+import { isMqttBrokerConnected, mqttClient } from '../config/mqtt';
 
 export const getAlarmsList = (req: Request, res: Response): void => {
   const statusFilter = req.query.status as string | undefined;
@@ -135,15 +136,24 @@ export const getSim7670GatewayStatus = (_req: Request, res: Response): void => {
 };
 
 export const sendSim7670AtCommand = (req: Request, res: Response): void => {
-  const { command } = req.body as { command: string };
+  const { command, gateway_id } = req.body as { command: string; gateway_id?: string };
   if (!command) {
     res.status(400).json({ error: 'AT command string is required' });
     return;
   }
 
+  const targetGwId = gateway_id || 'GW-LILYGO-TCALL-SIM800';
+
+  // Publish downlink command via MQTT to gateway if connected
+  if (isMqttBrokerConnected && mqttClient) {
+    const topic = `smartbuilding/gateway/${targetGwId}/command`;
+    mqttClient.publish(topic, JSON.stringify({ command, gateway_id: targetGwId, timestamp: Date.now() }), { qos: 1 });
+  }
+
   const result = sim7670Service.executeCustomAtCommand(command);
   res.json({
     result,
+    gateway_id: targetGwId,
     gateway: sim7670Service.getStatus()
   });
 };

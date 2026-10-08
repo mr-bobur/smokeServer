@@ -27,10 +27,10 @@ class MqttService {
       this.handleIncomingMqttPacket(topic, payloadStr);
     });
 
-    // Autonomous Digital Twin Hardware Telemetry Ticker (every 4 seconds)
-    this.simulationTimer = setInterval(() => {
-      this.simulateHardwareHeartbeatTick();
-    }, 4000);
+    // Real-only mode: Autonomous mock simulation ticker is disabled so that only genuine hardware telemetry is displayed.
+    // this.simulationTimer = setInterval(() => {
+    //   this.simulateHardwareHeartbeatTick();
+    // }, 4000);
   }
 
   public async handleIncomingMqttPacket(topic: string, payloadStr: string): Promise<void> {
