@@ -19,7 +19,8 @@ import {
   Layers,
   Terminal,
   CheckCircle2,
-  Hourglass
+  Hourglass,
+  Radio
 } from 'lucide-react';
 import {
   DeviceAttributesBundleData,
@@ -53,7 +54,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
   onTriggerTestAlarm
 }) => {
   const { t } = useAppSettings();
-  const [activeTab, setActiveTab] = useState<'telemetry' | 'attributes' | 'rpc'>('telemetry');
+  const [activeTab, setActiveTab] = useState<'telemetry' | 'attributes' | 'architecture'>('telemetry');
   const [beaconInterval, setBeaconInterval] = useState<number>(600);
   const [smokeThreshold, setSmokeThreshold] = useState<number>(400);
   const [armPerimeter, setArmPerimeter] = useState<boolean>(true);
@@ -103,7 +104,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
     await fetchThingsBoardDetails(sensor.id);
     setBusy(false);
     setFeedback(
-      'Shared Attributes saved as Desired State (PENDING_WAKEUP) & queued in Downlink RPC!'
+      'Parametrlar saqlandi! Datchikdagi jismoniy SETUP tugmasi bosilganda bir martalik 2-tomonlama ulanish orqali parametrlarni qabul qiladi.'
     );
   };
 
@@ -348,14 +349,14 @@ export const SensorModal: React.FC<SensorModalProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('rpc')}
+          onClick={() => setActiveTab('architecture')}
           className={`py-2 px-2 rounded-lg flex items-center justify-center gap-1.5 transition ${
-            activeTab === 'rpc'
+            activeTab === 'architecture'
               ? 'bg-sky-500 text-slate-950'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Terminal className="w-3.5 h-3.5" /> RPC Queue
+          <Radio className="w-3.5 h-3.5" /> Aloqa &amp; Setup
         </button>
       </div>
 
@@ -604,7 +605,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                 </span>
                 <span className="text-slate-400">inactivity_watchdog:</span>
                 <span className="text-white text-right">
-                  {attrs?.server?.inactivity_timeout_sec || 1800}s
+                  {attrs?.server?.inactivity_timeout_sec || 600}s (10 min)
                 </span>
                 <span className="text-slate-400">claimed_by_user_id:</span>
                 <span className="text-emerald-300 text-right">
@@ -615,64 +616,69 @@ export const SensorModal: React.FC<SensorModalProps> = ({
           </div>
         )}
 
-        {activeTab === 'rpc' && (
+        {activeTab === 'architecture' && (
           <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5">
-              <div className="text-xs font-bold uppercase text-sky-400">
-                Dispatch 2-Way RPC Command to {sensor.chip_id}
+            {/* 1-Way Uplink Protocol Spec */}
+            <div className="p-4 rounded-xl bg-slate-950/90 border border-sky-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                  <Radio className="w-4 h-4 text-sky-400" /> 1-Tomonlama Aloqa (1-Way Uplink)
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/20 text-sky-300">
+                  BROADCAST-ONLY
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handleDispatchRpc('PING_HEARTBEAT')}
-                  className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-sky-300 border border-slate-700"
-                >
-                  RPC: PING_HEARTBEAT
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handleDispatchRpc('WAKEUP_AND_SYNC')}
-                  className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-emerald-300 border border-slate-700"
-                >
-                  RPC: WAKEUP_AND_SYNC
-                </button>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Oxirgi datchiklar (ESP32-C3) avtonom batareyada (CR123A/LiPo) 3-5 yil ishlashi uchun chuqur uyquda (Deep Sleep ~5 µA) bo‘ladi. Uxlab yotgan datchikning radio qabul qilgichi (Rx) butunlay o‘chirilgan bo‘ladi, faqat har 5-10 daqiqada yoki tutun aniqlanganda uyg‘onib, paket uzatadi (Tx Broadcast).
+              </p>
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Texnik cheklov:</strong> Datchikda doimiy qabul qiluvchi (Rx) yo‘qligi sababli, serverdan to‘g‘ridan-to‘g‘ri ixtiyoriy 2-tomonlama RPC yoki Downlink chaqiruvlarini qabul qila olmaydi.
+                </span>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="text-xs font-bold uppercase text-slate-400">
-                Recent RPC Command Queue ({rpcList.length})
+            {/* Hardware Button Provisioning Card */}
+            <div className="p-4 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Tizimga Qo‘shish &amp; Tanib Olish (Pairing)
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
+                  BOOT TUGMA
+                </span>
               </div>
-              {rpcList.length === 0 ? (
-                <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-400 text-center">
-                  No RPC commands recorded for this endpoint yet.
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Teskari aloqa va parametrlarni (chegara qiymatlari, qavat va xona ma’lumotlari) tanib olish <strong>faqat datchikni tizimga birinchi marta qo‘shish (Provisioning) paytida</strong> amalga oshiriladi.
+              </p>
+              <div className="grid grid-cols-1 gap-2 text-xs font-mono">
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-400">Jismoniy harakat:</span>
+                  <span className="text-white font-bold">SETUP / BOOT tugmasini bosish</span>
                 </div>
-              ) : (
-                rpcList.map((rpc) => (
-                  <div
-                    key={rpc.id}
-                    className="p-3 rounded-xl bg-slate-950/90 border border-slate-800 text-xs font-mono space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-white">{rpc.method}</span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          rpc.status === 'ACKED'
-                            ? 'bg-emerald-500/20 text-emerald-300'
-                            : 'bg-amber-500/20 text-amber-300'
-                        }`}
-                      >
-                        {rpc.status}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {rpc.rpc_uid} • {new Date(rpc.created_at).toLocaleTimeString()}
-                    </div>
-                  </div>
-                ))
-              )}
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-400">Teskari aloqa:</span>
+                  <span className="text-emerald-400 font-bold">Faqat ulanish paytida (NVS Flash)</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-400">Gateway orqali:</span>
+                  <span className="text-sky-300 font-bold">{sensor.parent_node_id}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Inactivity Watchdog Status */}
+            <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
+              <div className="text-xs font-bold uppercase text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-sky-400" /> Avtomatik Offline Watchdog
+                </span>
+                <span className="text-sky-400 font-mono">10 daqiqa (600s)</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Agar datchik 10 daqiqa (600 soniya) davomida hech qanday telemetriya yoki ogohlantirish uzatmasa, markaziy server uni avtomatik ravishda <strong>OFFLINE</strong> holatiga o‘tkazadi. Markaziy Gateway uchun ushbu muddat <strong>5 daqiqa (300s)</strong> etib belgilangan.
+              </p>
             </div>
           </div>
         )}

@@ -21,11 +21,19 @@ import { sim7670Service } from './sim7670.service';
 
 class MqttService {
   private simulationTimer: NodeJS.Timeout | null = null;
+  private watchdogTimer: NodeJS.Timeout | null = null;
 
   public start(): void {
     initializeMqttClient((topic, payloadStr) => {
       this.handleIncomingMqttPacket(topic, payloadStr);
     });
+
+    // Device Inactivity Watchdog: Gateway = 5 min, Endpoints = 10 min
+    this.watchdogTimer = setInterval(() => {
+      this.checkOfflineDevicesWatchdog().catch((err) => {
+        console.error('[Watchdog] Error during offline check:', err);
+      });
+    }, 15000);
 
     // Real-only mode: Autonomous mock simulation ticker is disabled so that only genuine hardware telemetry is displayed.
     // this.simulationTimer = setInterval(() => {
@@ -85,6 +93,15 @@ class MqttService {
       gw.rssi_dbm = rssiDbm;
       gw.sim_operator = simOperator;
       gw.firmware_version = modem;
+
+      if (isMysqlConnected && mysqlPool) {
+        mysqlPool
+          .query(
+            `UPDATE central_gateways SET status = 'online', last_seen = NOW(), rssi_dbm = ?, sim_operator = ?, firmware_version = ? WHERE id = ?`,
+            [rssiDbm, simOperator, modem, gw.id]
+          )
+          .catch(() => {});
+      }
     }
 
     // Update modem status for AT console & live telemetry
@@ -248,7 +265,7 @@ class MqttService {
           room_id: room.id,
           coord_x: 20 + ((newId * 17) % 55),
           coord_y: 20 + ((newId * 13) % 45),
-          inactivity_timeout_sec: 1800,
+          inactivity_timeout_sec: 600,
           claimed_by_user_id: null,
           claimed_at: null
         }
@@ -337,9 +354,9 @@ class MqttService {
     if (sensor.sensor_type === 'TEMP_DS18B20') sensor.primary_value = sensor.temperature;
     if (sensor.sensor_type === 'CO_MQ7') sensor.primary_value = sensor.co_ppm;
 
-    if (payload.status === 'alarm') {
+    if (payload.status === 'alarm' || sensor.smoke_ppm >= sensor.smoke_threshold_ppm) {
       sensor.status = 'alarm';
-    } else if (sensor.status !== 'alarm') {
+    } else {
       sensor.status = 'online';
     }
 
@@ -389,6 +406,18 @@ class MqttService {
             sensor.reed_switch_open,
             sensor.glass_break_detected,
             sensor.battery_level
+          ]
+        );
+        await mysqlPool.query(
+          `UPDATE sensors_endpoints SET status = ?, smoke_ppm = ?, co_ppm = ?, temperature = ?, battery_level = ?, rssi_dbm = ?, last_seen = NOW() WHERE id = ?`,
+          [
+            sensor.status,
+            sensor.smoke_ppm,
+            sensor.co_ppm,
+            sensor.temperature,
+            sensor.battery_level,
+            sensor.rssi_dbm,
+            sensor.id
           ]
         );
       } catch {
@@ -543,6 +572,67 @@ class MqttService {
       floors: dbStore.floors,
       timestamp: nowIso
     });
+  }
+
+  public async checkOfflineDevicesWatchdog(): Promise<void> {
+    const now = Date.now();
+    const GATEWAY_TIMEOUT_MS = 5 * 60 * 1000; // 5 daqiqa (300 soniya)
+    const ENDPOINT_DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 daqiqa (600 soniya)
+
+    // 1. Central Gateways (5 daqiqa ichida yangilanmasa OFFLINE)
+    for (const gw of dbStore.gateways) {
+      if (gw.status !== 'offline') {
+        const lastSeenMs = gw.last_seen ? new Date(gw.last_seen).getTime() : 0;
+        if (now - lastSeenMs > GATEWAY_TIMEOUT_MS) {
+          gw.status = 'offline';
+          console.log(`[Watchdog] Gateway ${gw.serial_number} offline (inactivity > 5 min).`);
+
+          if (isMysqlConnected && mysqlPool) {
+            try {
+              await mysqlPool.query(
+                `UPDATE central_gateways SET status = 'offline' WHERE id = ?`,
+                [gw.id]
+              );
+            } catch (err) {
+              console.error('[Watchdog] Failed to update gateway in MySQL:', (err as Error).message);
+            }
+          }
+
+          socketService.emitGlobal('GATEWAY_UPDATE', { gateway: gw });
+          socketService.emitGlobal('INVENTORY_UPDATE', { action: 'GATEWAY_OFFLINE', gateway: gw });
+        }
+      }
+    }
+
+    // 2. Oxirgi datchiklar / Endpoints (10 daqiqa ichida yangilanmasa OFFLINE)
+    for (const sensor of dbStore.sensors) {
+      if (sensor.status !== 'offline') {
+        const lastSeenMs = sensor.last_seen ? new Date(sensor.last_seen).getTime() : 0;
+        const configuredTimeoutSec = sensor.attributes?.server?.inactivity_timeout_sec || 600;
+        const effectiveTimeoutMs = Math.max(ENDPOINT_DEFAULT_TIMEOUT_MS, configuredTimeoutSec * 1000);
+
+        if (now - lastSeenMs > effectiveTimeoutMs) {
+          sensor.status = 'offline';
+          console.log(
+            `[Watchdog] Endpoint ${sensor.chip_id} (${sensor.profile_code}) offline (inactivity > ${effectiveTimeoutMs / 60000} min).`
+          );
+
+          if (isMysqlConnected && mysqlPool) {
+            try {
+              await mysqlPool.query(
+                `UPDATE sensors_endpoints SET status = 'offline' WHERE id = ?`,
+                [sensor.id]
+              );
+            } catch (err) {
+              console.error('[Watchdog] Failed to update sensor in MySQL:', (err as Error).message);
+            }
+          }
+
+          socketService.emitGlobal('SENSOR_UPDATED', { sensor });
+          socketService.emitGlobal('INVENTORY_UPDATE', { action: 'SENSOR_OFFLINE', sensor });
+        }
+      }
+    }
   }
 }
 

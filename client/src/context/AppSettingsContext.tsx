@@ -70,7 +70,7 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     arm_away: 'ARM AWAY (Uydan chiqdim)',
     arm_home: 'ARM HOME (Uydaman)',
     disarm: 'DISARM (O‘chirish)',
-    simulate_alarm: 'Yong‘in Signalini Sinash (60s -> 112)'
+    simulate_alarm: 'Yong‘in Ogohlantirishini Sinash (60s -> 112)'
   },
   en: {
     app_title: 'SMART BUILDING SAAS ECOSYSTEM',
@@ -190,7 +190,7 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     arm_away: 'ОХРАНА: ВНЕ ДОМА',
     arm_home: 'ОХРАНА: ДОМА',
     disarm: 'СНЯТЬ С ОХРАНЫ',
-    simulate_alarm: 'Тест Пожарной Тревоги (60с -> 112)'
+    simulate_alarm: 'Тест Пожарного Оповещения (60с -> 112)'
   }
 };
 

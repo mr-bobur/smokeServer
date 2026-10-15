@@ -1,46 +1,97 @@
 /**
  * ============================================================================
- * SMART BUILDING ECOSYSTEM - ESP32-C3 WIRELESS SMOKE & SENSOR ENDPOINT (PIO)
- * Ultra-Low Power BLE 5.0 Beaconing + MQ-2 Optical Smoke ADC + Deep Sleep FSM
+ * SMART BUILDING ECOSYSTEM - ESP32-C3 INTEGRATED OPTICAL SMOKE ENDPOINT
+ * Board: Seeed Studio XIAO ESP32-C3
+ * 
+ * Hardware Pin Mapping:
+ *   - D1 (GPIO 3 / ADC1_CH3) : Optical Smoke Sensor Receiver (AO)
+ *   - D2 (GPIO 4)            : Chamber IR Emitter LED (Synchronous Pulsed Drive)
+ *   - D3 (GPIO 5)            : Alarm Buzzer Siren (Anti-Chirp Hardware Pulldown)
+ *   - D4 (GPIO 6)            : Status LED Indicator
+ *   - GPIO 9                 : Onboard BOOT Button
+ * ============================================================================
+ * Full Test Production Protocol:
+ *   1. Measures every 5 seconds.
+ *   2. In Normal state:
+ *      - Full Deep Sleep between 5s cycles (Ultra-Low Power ~5uA).
+ *      - Buzzer hardware locked to 0V (Zero chirp / zero click).
+ *      - Status LED heartbeat flash (30ms).
+ *      - Keep-alive telemetry beacon to Gateway every 30s.
+ *   3. Smoke Detection Threshold:
+ *      - Clean air: Raw 4090 - 4095 -> 0.0 PPM (Normal)
+ *      - Smoke detected: Raw <= 3800 -> 400+ PPM (Critical Alarm Threshold)
+ *   4. When smoke is detected:
+ *      - Broadcasts exactly 3 CONSECUTIVE ALARM packets to Gateway.
+ *      - Sounds Temporal-3 siren pattern on D3 & flashes Alarm LED on D4.
+ *      - Runs a 1-minute (60s / 12 cycles) repeating window.
+ *   5. If smoke clears within/after 1 minute (Raw > 3800):
+ *      - Silences siren and turns off LED.
+ *      - Broadcasts exactly 3 CONSECUTIVE NORMAL recovery packets to Gateway.
+ *      - Resumes standard 5-second sleep cycle.
+ *   6. If smoke remains after 1 minute:
+ *      - Re-transmits 3 CONSECUTIVE ALARM packets and continues siren alert.
  * ============================================================================
  */
 #include <Arduino.h>
-#include <Preferences.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <esp_sleep.h>
+#include <driver/gpio.h>
 
-#define PIN_PAIRING_BTN    9   // Active LOW Boot button with pull-up
-#define PIN_ALARM_BUZZER   4   // Piezo Siren Output
-#define PIN_STATUS_LED     8   // RGB / Status LED
-#define PIN_MQ2_ADC        0   // Smoke Optical / MQ-2 Analog Input
-#define PIN_MQ7_ADC        1   // CO Sensor Analog Input
-#define PIN_REED_SWITCH    3   // Door / Window Reed Switch
-#define PIN_GLASS_BREAK    10  // Acoustic Piezo Glass Shatter
+// Set to true for Full Deep Sleep (~5uA battery mode)
+// Set to false for Continuous Loop (keeps USB Serial Monitor open without disconnects)
+#define USE_DEEP_SLEEP                true
 
+// Hardware Pin Configuration
+#define PIN_SMOKE_ADC                 3   // D1 (GPIO 3) - Smoke Receiver (AO)
+#define PIN_IR_LED                    4   // D2 (GPIO 4) - Chamber IR Emitter LED
+#define PIN_ALARM_BUZZER              5   // D3 (GPIO 5) - Piezo Alarm Siren
+#define PIN_STATUS_LED                6   // D4 (GPIO 6) - Status LED Indicator
+#define PIN_BOOT_BTN                  9   // GPIO 9 - Onboard BOOT Button
+
+// Smoke Detection Parameters
+#define RAW_CLEAN_BASELINE            4095
+#define RAW_SMOKE_THRESHOLD           3800 // Trigger point: Raw <= 3800 is SMOKE ALARM
 #define SMOKE_CRITICAL_THRESHOLD_PPM  400.0f
-#define TEMP_CRITICAL_THRESHOLD_C     60.0f
+#define SLEEP_INTERVAL_SEC            5
+#define ALARM_REPEAT_CYCLES           12   // 12 cycles * 5s = 60s (1 minute)
 
-enum EndpointState {
-    STATE_STANDBY_SLEEP = 0,
-    STATE_PAIRING       = 1,
-    STATE_NORMAL_BEACON = 2,
-    STATE_ALARM_TRIGGER = 3
-};
+// Persistent state across Deep Sleep (stored in RTC memory)
+RTC_DATA_ATTR bool rtcInAlarmState = false;
+RTC_DATA_ATTR uint32_t rtcAlarmCycleCount = 0;       // Counts 5s cycles in alarm
+RTC_DATA_ATTR uint32_t rtcWakeupCount = 0;
+RTC_DATA_ATTR uint32_t rtcNormalHeartbeatCount = 0;
 
-Preferences nvs;
-EndpointState currentState = STATE_NORMAL_BEACON;
-uint32_t beaconIntervalSec = 30; // 30s during active demo / 600s in production
-bool isCommissioned = false;
 uint8_t chipIdBytes[6];
+bool isBleInitialized = false;
+static bool isToneRunning = false;
 
-void flashLed(int count, int delayMs = 120) {
+// Buzzer controller with hardware anti-chirp pulldown
+void soundBuzzer(bool enable, int freq = 2700) {
+    if (enable) {
+        gpio_hold_dis((gpio_num_t)PIN_ALARM_BUZZER);
+        tone(PIN_ALARM_BUZZER, freq);
+        isToneRunning = true;
+    } else {
+        if (isToneRunning) {
+            noTone(PIN_ALARM_BUZZER);
+            isToneRunning = false;
+        }
+        pinMode(PIN_ALARM_BUZZER, OUTPUT);
+        digitalWrite(PIN_ALARM_BUZZER, LOW);
+        gpio_pulldown_en((gpio_num_t)PIN_ALARM_BUZZER);
+        gpio_pullup_dis((gpio_num_t)PIN_ALARM_BUZZER);
+    }
+}
+
+// Flash status LED on D4
+void flashStatusLed(int count, int delayMs = 60) {
     for (int i = 0; i < count; i++) {
         digitalWrite(PIN_STATUS_LED, HIGH);
         delay(delayMs);
         digitalWrite(PIN_STATUS_LED, LOW);
-        delay(delayMs);
+        if (i < count - 1) delay(delayMs);
     }
 }
 
@@ -49,6 +100,11 @@ void flashLed(int count, int delayMs = 120) {
  * [0xFF, 0xFF, CHIP_ID (6B), TYPE_BYTE (1B), BATTERY_PCT (1B), VALUE_HIGH (1B), VALUE_LOW (1B)]
  */
 void broadcastTelemetryFrame(uint8_t typeByte, uint8_t batteryPct, uint16_t smokeValue) {
+    if (!isBleInitialized) {
+        BLEDevice::init("SB-C3-SMOKE");
+        isBleInitialized = true;
+    }
+
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->stop();
 
@@ -56,8 +112,8 @@ void broadcastTelemetryFrame(uint8_t typeByte, uint8_t batteryPct, uint16_t smok
     mfgPayload[0] = 0xFF;
     mfgPayload[1] = 0xFF;
     memcpy(&mfgPayload[2], chipIdBytes, 6);
-    mfgPayload[8] = typeByte;                    // 0x01: SMOKE_MQ2
-    mfgPayload[9] = batteryPct;                  // Battery % (e.g. 96)
+    mfgPayload[8] = typeByte;                    // 0x01: SMOKE_MQ2 / OPTICAL
+    mfgPayload[9] = batteryPct;                  // Battery %
     mfgPayload[10] = (smokeValue >> 8) & 0xFF;   // Value High Byte
     mfgPayload[11] = smokeValue & 0xFF;          // Value Low Byte
 
@@ -67,89 +123,205 @@ void broadcastTelemetryFrame(uint8_t typeByte, uint8_t batteryPct, uint16_t smok
     pAdvertising->setAdvertisementData(advData);
     pAdvertising->start();
 
-    Serial.printf("[BLE Tx] Chip: %02X%02X%02X%02X%02X%02X | Type: 0x%02X | Bat: %d%% | Smoke: %d PPM\n",
+    Serial.printf("[BLE Tx] Chip: C3-%02X%02X%02X%02X%02X%02X | Type: 0x%02X | Bat: %d%% | Smoke: %d PPM\n",
                   chipIdBytes[0], chipIdBytes[1], chipIdBytes[2],
                   chipIdBytes[3], chipIdBytes[4], chipIdBytes[5],
                   typeByte, batteryPct, smokeValue);
 }
 
-bool checkLongPressCommissioning() {
-    if (digitalRead(PIN_PAIRING_BTN) == LOW) {
-        uint32_t pressStart = millis();
-        while (digitalRead(PIN_PAIRING_BTN) == LOW) {
-            uint32_t elapsed = millis() - pressStart;
-            if (elapsed >= 5000 && elapsed <= 10000) {
-                currentState = STATE_PAIRING;
-                return true;
+/**
+ * Transmits exactly N consecutive BLE packets with spacing to guarantee 100% RF delivery
+ */
+void sendPacketBurst(uint8_t typeByte, uint8_t batteryPct, uint16_t smokeValue, int burstCount = 3) {
+    for (int i = 0; i < burstCount; i++) {
+        Serial.printf("  -> Transmitting Burst Frame [%d/%d] (Smoke: %d PPM)...\n", i + 1, burstCount, smokeValue);
+        broadcastTelemetryFrame(typeByte, batteryPct, smokeValue);
+        delay(120); // 120ms RF inter-frame spacing
+    }
+}
+
+/**
+ * Optical Smoke Sensor Measurement:
+ * Synchronous 30ms IR LED pulse (0.6% duty cycle) + 16x oversampled ADC read on D1.
+ * 30ms settle time allows phototransistor RC filter to fully saturate to 4095 in clean air.
+ */
+float readOpticalSmoke(int &outRawAdc, float &outDrop) {
+    // 1. Turn ON IR LED pulse
+    digitalWrite(PIN_IR_LED, HIGH);
+    delay(30); // 30ms optical & capacitor settling time
+
+    // 2. 16x fast oversampling to filter ADC electrical noise
+    int sum = 0;
+    for (int i = 0; i < 16; i++) {
+        sum += analogRead(PIN_SMOKE_ADC);
+        delayMicroseconds(20);
+    }
+    outRawAdc = sum / 16;
+
+    // 3. Immediately turn OFF IR LED (Duty cycle: 30ms / 5000ms = 0.6% -> Transistor is completely cold!)
+    digitalWrite(PIN_IR_LED, LOW);
+
+    // 4. Compute drop from clean baseline (4095)
+    outDrop = (float)RAW_CLEAN_BASELINE - (float)outRawAdc;
+    if (outDrop < 0.0f) outDrop = 0.0f;
+
+    // 5. Calibrated PPM:
+    //    Clean air (raw > 3800): 0.0 PPM (Normal)
+    //    Smoke detected (raw <= 3800): 400.0 PPM to 600.0 PPM (Alarm)
+    float smokePpm = 0.0f;
+    if (outRawAdc <= RAW_SMOKE_THRESHOLD) {
+        smokePpm = 400.0f + ((float)(RAW_SMOKE_THRESHOLD - outRawAdc) / (float)(RAW_SMOKE_THRESHOLD - 600)) * 200.0f;
+        if (smokePpm > 600.0f) smokePpm = 600.0f;
+    } else {
+        smokePpm = 0.0f;
+    }
+
+    return smokePpm;
+}
+
+void soundAlarmSirenPattern() {
+    // Standard ISO/NFPA Temporal-3 emergency siren burst
+    for (int i = 0; i < 3; i++) {
+        digitalWrite(PIN_STATUS_LED, HIGH);
+        soundBuzzer(true, 2800);
+        delay(150);
+        soundBuzzer(false);
+        digitalWrite(PIN_STATUS_LED, LOW);
+        delay(100);
+    }
+}
+
+/**
+ * Core Execution Logic (Shared across Deep Sleep and Continuous Loop)
+ */
+void runFullSmokeCycle() {
+    rtcWakeupCount++;
+
+    Serial.println("\n======================================================================");
+    Serial.printf("  SMART SMOKE ENDPOINT [CYCLE #%d] | State: %s\n",
+                  rtcWakeupCount, (rtcInAlarmState ? "ALARM ACTIVE" : "NORMAL"));
+    Serial.println("======================================================================");
+
+    // 1. Measure Optical Smoke Sensor
+    int rawAdc = 0;
+    float drop = 0.0f;
+    float smokePpm = readOpticalSmoke(rawAdc, drop);
+    uint8_t batteryPct = 96;
+
+    // Detection condition: Raw <= 3800
+    bool isSmokePresent = (rawAdc <= RAW_SMOKE_THRESHOLD);
+
+    Serial.printf("[Sensor D1] Raw: %4d | Drop: %4.0f | Smoke: %5.1f PPM | Thresh: %d | Result: %s\n",
+                  rawAdc, drop, smokePpm, RAW_SMOKE_THRESHOLD,
+                  (isSmokePresent ? "SMOKE CRITICAL (<= 3800)" : "CLEAN NORMAL (> 3800)"));
+
+    // 2. State Machine & Transmission Logic
+    if (isSmokePresent) {
+        // --- SMOKE DETECTED ---
+        if (!rtcInAlarmState) {
+            // New alarm detected
+            rtcInAlarmState = true;
+            rtcAlarmCycleCount = 0;
+
+            Serial.println(">>> [ALARM NEW] Smoke detected (Raw <= 3800)! Transmitting 3x ALARM burst to Gateway! <<<");
+            sendPacketBurst(0x01, batteryPct, (uint16_t)smokePpm, 3);
+            soundAlarmSirenPattern();
+        } else {
+            // Ongoing alarm
+            rtcAlarmCycleCount++;
+            Serial.printf(">>> [ALARM ONGOING] Cycle %d/%d in 1-minute window. <<<\n",
+                          rtcAlarmCycleCount, ALARM_REPEAT_CYCLES);
+
+            soundAlarmSirenPattern();
+
+            // Check if 1 minute has elapsed (12 cycles * 5s = 60s)
+            if (rtcAlarmCycleCount >= ALARM_REPEAT_CYCLES) {
+                rtcAlarmCycleCount = 0; // Reset 1-minute window
+                Serial.println(">>> [ALARM 1-MIN RE-NOTIFY] 1 minute elapsed, smoke still present! Transmitting 3x ALARM burst! <<<");
+                sendPacketBurst(0x01, batteryPct, (uint16_t)smokePpm, 3);
             }
-            delay(50);
+        }
+    } else {
+        // --- CLEAN / NO SMOKE ---
+        if (rtcInAlarmState) {
+            // Smoke has cleared! Transition from Alarm -> Normal
+            rtcInAlarmState = false;
+            rtcAlarmCycleCount = 0;
+
+            soundBuzzer(false);
+            digitalWrite(PIN_STATUS_LED, LOW);
+
+            Serial.println(">>> [RECOVERY] Smoke cleared (Raw > 3800)! Transmitting 3x NORMAL recovery burst to Gateway! <<<");
+            sendPacketBurst(0x01, batteryPct, (uint16_t)smokePpm, 3);
+            flashStatusLed(3, 100);
+        } else {
+            // Standard Normal Standby
+            rtcNormalHeartbeatCount++;
+            flashStatusLed(1, 30); // 30ms gentle heartbeat blink
+
+            // Send keep-alive telemetry beacon every 6 cycles (30s)
+            if (rtcNormalHeartbeatCount >= 6) {
+                rtcNormalHeartbeatCount = 0;
+                broadcastTelemetryFrame(0x01, batteryPct, (uint16_t)smokePpm);
+            }
         }
     }
-    return false;
+
+    // Ensure buzzer is completely off and silent during wait interval
+    soundBuzzer(false);
 }
 
 void setup() {
-    Serial.begin(115200);
-    delay(1000);
-
-    pinMode(PIN_PAIRING_BTN, INPUT_PULLUP);
+    // Anti-Chirp Hardware Protection for Buzzer on GPIO 5:
+    gpio_hold_dis((gpio_num_t)PIN_ALARM_BUZZER);
     pinMode(PIN_ALARM_BUZZER, OUTPUT);
-    pinMode(PIN_STATUS_LED, OUTPUT);
-    pinMode(PIN_REED_SWITCH, INPUT_PULLUP);
-    pinMode(PIN_GLASS_BREAK, INPUT_PULLUP);
+    digitalWrite(PIN_ALARM_BUZZER, LOW);
+    gpio_pulldown_en((gpio_num_t)PIN_ALARM_BUZZER);
+    gpio_pullup_dis((gpio_num_t)PIN_ALARM_BUZZER);
 
+    Serial.begin(115200);
+
+    // Configure Hardware Pins
+    pinMode(PIN_IR_LED, OUTPUT);
+    digitalWrite(PIN_IR_LED, LOW);
+
+    pinMode(PIN_STATUS_LED, OUTPUT);
+    digitalWrite(PIN_STATUS_LED, LOW);
+
+    pinMode(PIN_BOOT_BTN, INPUT_PULLUP);
+
+    analogSetAttenuation(ADC_11db);
+    analogReadResolution(12);
+
+    // Extract MAC Address for Chip ID
     uint64_t mac = ESP.getEfuseMac();
     for (int i = 0; i < 6; i++) {
         chipIdBytes[i] = (mac >> (8 * (5 - i))) & 0xFF;
     }
 
-    nvs.begin("smart_smoke", false);
-    isCommissioned = nvs.getBool("paired", true);
-    beaconIntervalSec = nvs.getUInt("beacon_sec", 30);
+#if USE_DEEP_SLEEP
+    // Run the measurement cycle
+    runFullSmokeCycle();
 
-    Serial.println("======================================================================");
-    Serial.printf("  ESP32-C3 SMOKE DETECTOR ENDPOINT [CHIP: C3-%02X%02X%02X%02X%02X%02X]\n",
-                  chipIdBytes[0], chipIdBytes[1], chipIdBytes[2],
-                  chipIdBytes[3], chipIdBytes[4], chipIdBytes[5]);
-    Serial.println("======================================================================");
+    // Hardware Anti-Chirp Lock: Lock D3 Buzzer at 0V during Deep Sleep
+    soundBuzzer(false);
+    gpio_pulldown_en((gpio_num_t)PIN_ALARM_BUZZER);
+    gpio_pullup_dis((gpio_num_t)PIN_ALARM_BUZZER);
+    gpio_hold_en((gpio_num_t)PIN_ALARM_BUZZER);
 
-    BLEDevice::init("SB-C3-SMOKE");
-    flashLed(2);
+    // Configure 5-second timer wakeup
+    Serial.println("[Power] Entering Full Deep Sleep for 5 seconds (~5uA)...\n");
+    Serial.flush();
+    delay(50);
+
+    esp_sleep_enable_timer_wakeup((uint64_t)SLEEP_INTERVAL_SEC * 1000000ULL);
+    esp_deep_sleep_start();
+#endif
 }
 
 void loop() {
-    // 1. Commissioning Button Check (5s hold)
-    if (checkLongPressCommissioning()) {
-        Serial.println("[Endpoint] Entering PAIRING MODE...");
-        broadcastTelemetryFrame(0x01, 99, 15);
-        flashLed(5, 80);
-        nvs.putBool("paired", true);
-        currentState = STATE_NORMAL_BEACON;
-    }
-
-    // 2. Read Sensors (Optical Smoke / MQ2)
-    int rawAdc = analogRead(PIN_MQ2_ADC);
-    float smokePpm = (rawAdc / 4095.0f) * 600.0f;
-    uint8_t batteryPct = 96;
-
-    // 3. Alarm Threshold Evaluation
-    if (smokePpm >= SMOKE_CRITICAL_THRESHOLD_PPM) {
-        currentState = STATE_ALARM_TRIGGER;
-        Serial.printf("[ALARM CRITICAL] Smoke Level %0.1f PPM exceeds %0.1f PPM threshold!\n",
-                      smokePpm, SMOKE_CRITICAL_THRESHOLD_PPM);
-
-        digitalWrite(PIN_ALARM_BUZZER, HIGH);
-        flashLed(3, 50);
-
-        // Transmit urgent alarm packets continuously
-        broadcastTelemetryFrame(0x01, batteryPct, (uint16_t)smokePpm);
-        delay(1000);
-    } else {
-        digitalWrite(PIN_ALARM_BUZZER, LOW);
-        currentState = STATE_NORMAL_BEACON;
-
-        // Normal periodic beacon
-        broadcastTelemetryFrame(0x01, batteryPct, (uint16_t)smokePpm);
-        delay(3000); // Send beacon every 3 seconds for live gateway testing
-    }
+#if !USE_DEEP_SLEEP
+    runFullSmokeCycle();
+    delay(SLEEP_INTERVAL_SEC * 1000);
+#endif
 }

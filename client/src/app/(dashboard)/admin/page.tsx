@@ -829,7 +829,7 @@ export default function SuperAdminDashboardPage() {
             )}
           </div>
 
-          {/* 4. TREVOQALAR & 112 (ALARMS & RPC) */}
+          {/* 4. OGOHLANTIRISHLAR & 112 (ALARMS & DISPATCH) */}
           <button
             type="button"
             onClick={() => setActiveSection('alarms')}
@@ -841,7 +841,7 @@ export default function SuperAdminDashboardPage() {
           >
             <span className="flex items-center gap-2.5">
               <AlertOctagon className="w-4 h-4 text-red-400" />
-              <span>Trevoqalar va 112</span>
+              <span>Ogohlantirishlar va 112</span>
             </span>
             <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-mono text-[10px]">
               {alarms.length}
@@ -1695,8 +1695,8 @@ export default function SuperAdminDashboardPage() {
                       >
                         <option value="ALL">Barcha Holatlar</option>
                         <option value="online">Online</option>
-                        <option value="alarm">Trevoqa (Alarm)</option>
-                        <option value="warning">Ogohlantirish (Warning)</option>
+                        <option value="alarm">Ogohlantirish (Alarm)</option>
+                        <option value="warning">Ehtiyotkorlik (Warning)</option>
                         <option value="offline">Offline</option>
                       </select>
 
@@ -1784,7 +1784,7 @@ export default function SuperAdminDashboardPage() {
                                     type="button"
                                     onClick={() => setSelectedSensor(dev)}
                                     className="p-1.5 rounded-lg bg-slate-800 hover:bg-sky-500/20 text-sky-400 border border-slate-700"
-                                    title="3-Scope Atributlar & RPC (Inspect)"
+                                    title="3-Scope Atributlar & Aloqa (Inspect)"
                                   >
                                     <Sliders className="w-3.5 h-3.5" />
                                   </button>
@@ -1935,7 +1935,7 @@ export default function SuperAdminDashboardPage() {
           )}
 
         {/* ===================================================================
-            SECTION 4: TREVOQALAR, 112 VA ANALITIKA (ALARMS & RPC)
+            SECTION 4: OGOHLANTIRISHLAR, 112 VA ANALITIKA
            =================================================================== */}
         {activeSection === 'alarms' && (
           <div className="space-y-6">
@@ -2555,7 +2555,7 @@ export default function SuperAdminDashboardPage() {
         </div>
       )}
 
-      {/* Sliding Sensor Inspection, 3-Scope Attributes & RPC Drawer */}
+      {/* Sliding Sensor Inspection, 3-Scope Attributes & Aloqa Arxitekturasi Drawer */}
       <SensorModal
         sensor={selectedSensor}
         onClose={() => setSelectedSensor(null)}

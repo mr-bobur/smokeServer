@@ -20,38 +20,76 @@ body {
 
 /* Light Mode Adaptive Overrides for Industrial Clarity */
 html.light-mode body {
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
   color: #0f172a;
 }
 
+/* Panel & Card Backgrounds */
 html.light-mode .bg-slate-950,
+html.light-mode .bg-slate-950\/95,
 html.light-mode .bg-slate-950\/90,
 html.light-mode .bg-slate-950\/80,
-html.light-mode .bg-slate-950\/70 {
-  background-color: #f8fafc !important;
+html.light-mode .bg-slate-950\/70,
+html.light-mode .bg-slate-950\/60 {
+  background-color: #f1f5f9 !important;
 }
 
 html.light-mode .bg-slate-900,
 html.light-mode .bg-slate-900\/95,
 html.light-mode .bg-slate-900\/90,
+html.light-mode .bg-slate-900\/80,
+html.light-mode .bg-slate-900\/70,
 html.light-mode .bg-slate-900\/60 {
   background-color: #ffffff !important;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
 }
 
+/* Neutral Buttons & Badges */
 html.light-mode .bg-slate-800,
-html.light-mode .bg-slate-800\/80 {
+html.light-mode .bg-slate-800\/80,
+html.light-mode .bg-slate-800\/60 {
   background-color: #e2e8f0 !important;
+  color: #1e293b !important;
 }
 
+html.light-mode button.bg-slate-800:hover,
+html.light-mode .hover\:bg-slate-800:hover,
+html.light-mode .hover\:bg-slate-800\/80:hover {
+  background-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Crisp Industrial Borders */
 html.light-mode .border-slate-800,
 html.light-mode .border-slate-800\/90,
 html.light-mode .border-slate-800\/80,
+html.light-mode .border-slate-800\/60,
 html.light-mode .border-slate-700,
+html.light-mode .border-slate-700\/80,
 html.light-mode .border-slate-700\/60 {
   border-color: #cbd5e1 !important;
 }
 
+/* Form Inputs, Selects, and Textareas */
+html.light-mode input:not([type="range"]),
+html.light-mode select,
+html.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light-mode input::placeholder,
+html.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light-mode select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Typography Overrides (Except inside Colored Action Buttons) */
 html.light-mode .text-white,
 html.light-mode .text-slate-100,
 html.light-mode .text-slate-200 {
@@ -60,16 +98,148 @@ html.light-mode .text-slate-200 {
 
 html.light-mode .text-slate-300,
 html.light-mode .text-slate-400 {
+  color: #334155 !important;
+}
+
+html.light-mode .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* CRITICAL: High-contrast Buttons with Colored Backgrounds must retain pure white text */
+html.light-mode [class*="bg-sky-600"],
+html.light-mode [class*="bg-sky-600"] *,
+html.light-mode [class*="bg-sky-500"],
+html.light-mode [class*="bg-sky-500"] *,
+html.light-mode [class*="bg-red-600"],
+html.light-mode [class*="bg-red-600"] *,
+html.light-mode [class*="bg-red-500"],
+html.light-mode [class*="bg-red-500"] *,
+html.light-mode [class*="bg-rose-600"],
+html.light-mode [class*="bg-rose-600"] *,
+html.light-mode [class*="bg-emerald-600"],
+html.light-mode [class*="bg-emerald-600"] *,
+html.light-mode [class*="bg-emerald-500"],
+html.light-mode [class*="bg-emerald-500"] *,
+html.light-mode [class*="bg-amber-600"],
+html.light-mode [class*="bg-amber-600"] *,
+html.light-mode [class*="bg-blue-600"],
+html.light-mode [class*="bg-blue-600"] *,
+html.light-mode [class*="bg-indigo-600"],
+html.light-mode [class*="bg-indigo-600"] *,
+html.light-mode [class*="bg-purple-600"],
+html.light-mode [class*="bg-purple-600"] *,
+html.light-mode button[class*="bg-sky-"],
+html.light-mode button[class*="bg-sky-"] *,
+html.light-mode button[class*="bg-red-"],
+html.light-mode button[class*="bg-red-"] *,
+html.light-mode button[class*="bg-emerald-"],
+html.light-mode button[class*="bg-emerald-"] * {
+  color: #ffffff !important;
+}
+
+/* Light Mode Accent High-Contrast Text Adjustments */
+html.light-mode .text-sky-400,
+html.light-mode .text-sky-300 {
+  color: #0284c7 !important;
+}
+
+html.light-mode .text-emerald-400,
+html.light-mode .text-emerald-300 {
+  color: #059669 !important;
+}
+
+html.light-mode .text-amber-400,
+html.light-mode .text-amber-300 {
+  color: #b45309 !important;
+}
+
+html.light-mode .text-orange-400,
+html.light-mode .text-orange-300 {
+  color: #c2410c !important;
+}
+
+html.light-mode .text-red-400,
+html.light-mode .text-red-300,
+html.light-mode .text-rose-400,
+html.light-mode .text-rose-300 {
+  color: #dc2626 !important;
+}
+
+html.light-mode .text-purple-400,
+html.light-mode .text-purple-300 {
+  color: #7e22ce !important;
+}
+
+/* Light Mode Tinted Badge Containers */
+html.light-mode .bg-sky-500\/10,
+html.light-mode .bg-sky-500\/15,
+html.light-mode .bg-sky-500\/20,
+html.light-mode .bg-sky-600\/20 {
+  background-color: #e0f2fe !important;
+  border-color: #bae6fd !important;
+}
+
+html.light-mode .bg-emerald-500\/10,
+html.light-mode .bg-emerald-500\/15,
+html.light-mode .bg-emerald-500\/20 {
+  background-color: #d1fae5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light-mode .bg-amber-500\/10,
+html.light-mode .bg-amber-500\/15,
+html.light-mode .bg-amber-500\/20 {
+  background-color: #fef3c7 !important;
+  border-color: #fde68a !important;
+}
+
+html.light-mode .bg-orange-500\/10,
+html.light-mode .bg-orange-500\/20 {
+  background-color: #ffedd5 !important;
+  border-color: #fed7aa !important;
+}
+
+html.light-mode .bg-red-500\/10,
+html.light-mode .bg-red-500\/20,
+html.light-mode .bg-red-950\/30,
+html.light-mode .bg-red-950\/40,
+html.light-mode .bg-rose-500\/10,
+html.light-mode .bg-rose-500\/20 {
+  background-color: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+}
+
+html.light-mode .bg-purple-500\/10,
+html.light-mode .bg-purple-500\/20 {
+  background-color: #f3e8ff !important;
+  border-color: #e9d5ff !important;
+}
+
+/* Table Enhancements in Light Mode */
+html.light-mode table thead tr {
+  background-color: #f1f5f9 !important;
+}
+
+html.light-mode table thead th {
   color: #475569 !important;
 }
 
+html.light-mode table tbody tr {
+  border-color: #e2e8f0 !important;
+}
+
+html.light-mode table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Light Blueprint Grid */
 html.light-mode .blueprint-grid {
-  background-color: #e0f2fe;
+  background-color: #f0f9ff;
   background-image:
-    linear-gradient(to right, rgba(2, 132, 199, 0.18) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(2, 132, 199, 0.18) 1px, transparent 1px),
-    linear-gradient(to right, rgba(14, 165, 233, 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(14, 165, 233, 0.09) 1px, transparent 1px);
+    linear-gradient(to right, rgba(2, 132, 199, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(2, 132, 199, 0.22) 1px, transparent 1px),
+    linear-gradient(to right, rgba(14, 165, 233, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 165, 233, 0.12) 1px, transparent 1px);
   background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
 }
 
