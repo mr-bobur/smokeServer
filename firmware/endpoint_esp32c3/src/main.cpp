@@ -216,19 +216,30 @@ void handleActiveAlarmMode(int initialRaw, float initialDrop, float initialPpm, 
     unsigned long lastAlarmBurstTime = millis();
     uint32_t alarmCycleIndex = 0;
 
-    // 2. Active Continuous Siren Loop (NO DEEP SLEEP WHILE SMOKE IS PRESENT)
+    // 2. Active Continuous Siren Loop (5-second sensor measurement interval)
     while (true) {
         alarmCycleIndex++;
+        unsigned long cycleStartTime = millis();
 
-        // A. Sound standard emergency siren cadence (Temporal-3: 3x 150ms tones + 100ms pauses)
+        // A. Sound standard emergency siren bursts across the 5-second window
+        // Burst 1 (3x 150ms tones + 100ms pause = 750ms)
+        soundAlarmSirenPattern();
+        delay(1000); // 1000ms pause between bursts
+
+        // Burst 2 (3x 150ms tones + 100ms pause = 750ms)
         soundAlarmSirenPattern();
 
-        // B. Re-sample optical smoke chamber
+        // Wait out the remainder of the 5-second interval before next optical measurement
+        while (millis() - cycleStartTime < 5000UL) {
+            delay(50);
+        }
+
+        // B. Re-sample optical smoke chamber (Every 5 seconds)
         int currentRaw = 0;
         float currentDrop = 0.0f;
         float currentPpm = readOpticalSmoke(currentRaw, currentDrop);
 
-        Serial.printf("[ALARM SIREN #%d] Raw: %4d | Drop: %4.0f | PPM: %5.1f | Status: %s\n",
+        Serial.printf("[ALARM CYCLE #%d (5s Interval)] Raw: %4d | Drop: %4.0f | PPM: %5.1f | Status: %s\n",
                       alarmCycleIndex, currentRaw, currentDrop, currentPpm,
                       (currentRaw <= RAW_SMOKE_THRESHOLD ? "SMOKE ACTIVE (SIREN ON)" : "SMOKE CLEARED"));
 
@@ -269,9 +280,6 @@ void handleActiveAlarmMode(int initialRaw, float initialDrop, float initialPpm, 
             Serial.println(">>> [ALARM 60s RE-NOTIFY] Smoke still present! Re-transmitting 3x ALARM burst to Gateway! <<<");
             sendPacketBurst(0x01, batteryPct, (uint16_t)currentPpm, 3);
         }
-
-        // E. Brief 250ms cadence pause between siren bursts (Temporal-3 envelope)
-        delay(250);
     }
 }
 
