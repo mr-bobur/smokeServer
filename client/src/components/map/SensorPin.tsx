@@ -44,20 +44,20 @@ export const SensorPin: React.FC<SensorPinProps> = ({
 
   // Strictly format the SINGLE sensor metric according to the device's dedicated type
   const getSingleSensorMetricLabel = (): string => {
-    if (effectiveStatus === 'offline') return 'OFFLINE';
+    if (effectiveStatus === 'offline') return 'ALOQASIZ';
     if (isLowBat) return `BAT ${sensor.battery_level}%`;
 
     switch (sensor.sensor_type) {
       case 'SMOKE_MQ2':
-        return `SMOKE: ${sensor.smoke_ppm} PPM`;
+        return `TUTUN: ${sensor.smoke_ppm} PPM`;
       case 'TEMP_DS18B20':
-        return `TEMP: ${sensor.temperature} °C`;
+        return `HARORAT: ${sensor.temperature} °C`;
       case 'DOOR_REED':
-        return sensor.reed_switch_open ? 'DOOR: OPEN' : 'DOOR: CLOSED';
+        return sensor.reed_switch_open ? 'ESHIK: OCHIQ' : 'ESHIK: YOPIQ';
       case 'CO_MQ7':
         return `CO: ${sensor.co_ppm} PPM`;
       case 'GLASS_BREAK':
-        return sensor.glass_break_detected ? 'GLASS: BROKEN' : 'GLASS: OK';
+        return sensor.glass_break_detected ? 'OYNA: SINGAN' : 'OYNA: BUTUN';
       default:
         return `${sensor.smoke_ppm} PPM`;
     }
@@ -85,14 +85,14 @@ export const SensorPin: React.FC<SensorPinProps> = ({
           ring: 'bg-slate-600/20 border-slate-500 opacity-50',
           core: 'bg-slate-700 border-slate-400 opacity-70',
           badge: 'bg-slate-900/95 text-slate-400 border-slate-600',
-          label: 'OFFLINE'
+          label: 'ALOQASIZ'
         };
       case 'pairing':
         return {
           ring: 'bg-sky-500/40 border-sky-300 animate-ping',
           core: 'bg-sky-500 border-white shadow-[0_0_18px_rgba(14,165,233,0.9)]',
           badge: 'bg-sky-950/95 text-sky-200 border-sky-400',
-          label: 'INTRO HANDSHAKE'
+          label: 'ULANMOQDA'
         };
       default:
         return {

@@ -68,10 +68,10 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
   }, [sensorId, range]);
 
   const rangeButtons: Array<{ key: RangeKey; label: string }> = [
-    { key: '24h', label: '24 Hours' },
-    { key: '7d', label: '7 Days' },
-    { key: '30d', label: '30 Days' },
-    { key: '1y', label: '1 Year (Partitioned)' }
+    { key: '24h', label: '24 Soat' },
+    { key: '7d', label: '7 Kun' },
+    { key: '30d', label: '30 Kun' },
+    { key: '1y', label: '1 Yil (Bo‘lingan)' }
   ];
 
   return (
@@ -82,14 +82,14 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-sky-400" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-              1-Year Partitioned Historical Telemetry Analytics
+              1 Yillik Tarixiy Telemetriya Tahlili
             </h3>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/15 text-sky-300 border border-sky-500/30">
               {sensor ? `${sensor.chip_id} (${sensor.room_number})` : 'C3-9A4F22B8 (Apt 42)'}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            MySQL Range Partitioning (`p_2026_q1` .. `p_2026_q4`) • Dual-Axis Smoke PPM &amp; Ambient Temp (°C) with Critical Benchmark Thresholds
+            MySQL Range Partitsiyalash (`p_2026_q1` .. `p_2026_q4`) • Tutun miqdori (PPM) &amp; Atrof harorati (°C) kritik chegaralari bilan
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
           <div>
-            <span className="text-[11px] text-slate-400 block">Avg Smoke Level</span>
+            <span className="text-[11px] text-slate-400 block">O‘rtacha Tutun</span>
             <span className="text-base font-bold font-mono text-sky-300">
               {summary.avg_smoke_ppm} PPM
             </span>
@@ -125,7 +125,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
         </div>
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
           <div>
-            <span className="text-[11px] text-slate-400 block">Peak Smoke Spike</span>
+            <span className="text-[11px] text-slate-400 block">Maksimal Tutun Cho‘qqisi</span>
             <span
               className={`text-base font-bold font-mono ${
                 summary.max_smoke_ppm >= 400 ? 'text-red-400' : 'text-amber-300'
@@ -138,7 +138,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
         </div>
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
           <div>
-            <span className="text-[11px] text-slate-400 block">Avg Temperature</span>
+            <span className="text-[11px] text-slate-400 block">O‘rtacha Harorat</span>
             <span className="text-base font-bold font-mono text-emerald-300">
               {summary.avg_temp_c} °C
             </span>
@@ -147,7 +147,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
         </div>
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
           <div>
-            <span className="text-[11px] text-slate-400 block">Peak Temperature</span>
+            <span className="text-[11px] text-slate-400 block">Maksimal Harorat</span>
             <span
               className={`text-base font-bold font-mono ${
                 summary.max_temp_c >= 60 ? 'text-red-400' : 'text-rose-300'
@@ -164,7 +164,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
       <div className="w-full h-[310px] pt-2">
         {loading ? (
           <div className="w-full h-full flex items-center justify-center text-xs font-mono text-slate-400">
-            Querying partitioned telemetry_logs table...
+            Partitsiyalangan telemetry_logs jadvalidan tahlil qilinmoqda...
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -187,7 +187,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
                 stroke="#38bdf8"
                 tick={{ fill: '#38bdf8', fontSize: 11 }}
                 label={{
-                  value: 'Smoke (PPM)',
+                  value: 'Tutun (PPM)',
                   angle: -90,
                   position: 'insideLeft',
                   fill: '#38bdf8',
@@ -201,7 +201,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
                 stroke="#fb7185"
                 tick={{ fill: '#fb7185', fontSize: 11 }}
                 label={{
-                  value: 'Temperature (°C)',
+                  value: 'Harorat (°C)',
                   angle: 90,
                   position: 'insideRight',
                   fill: '#fb7185',
@@ -226,7 +226,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
                 strokeDasharray="6 4"
                 strokeWidth={1.5}
                 label={{
-                  value: 'CRITICAL SMOKE (400 PPM)',
+                  value: 'KRITIK TUTUN (400 PPM)',
                   fill: '#f87171',
                   fontSize: 10,
                   position: 'insideTopLeft'
@@ -239,7 +239,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
                 label={{
-                  value: 'CRITICAL TEMP (60°C)',
+                  value: 'KRITIK HARORAT (60°C)',
                   fill: '#fb923c',
                   fontSize: 10,
                   position: 'insideTopRight'
@@ -250,7 +250,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
                 yAxisId="left"
                 type="monotone"
                 dataKey="smoke_ppm"
-                name="Smoke Concentration (PPM)"
+                name="Tutun konsentratsiyasi (PPM)"
                 stroke="#38bdf8"
                 fill="url(#smokeGrad)"
                 strokeWidth={2}
@@ -259,7 +259,7 @@ export const TelemetryChart: React.FC<TelemetryChartProps> = ({ sensor }) => {
                 yAxisId="right"
                 type="monotone"
                 dataKey="temperature"
-                name="Ambient Temp (°C)"
+                name="Atrof harorati (°C)"
                 stroke="#fb7185"
                 strokeWidth={2.2}
                 dot={{ r: 2 }}

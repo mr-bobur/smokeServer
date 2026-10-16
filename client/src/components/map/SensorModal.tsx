@@ -228,7 +228,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                   sensor.reed_switch_open ? 'text-red-400' : 'text-emerald-400'
                 }`}
               >
-                {sensor.reed_switch_open ? 'DOOR OPEN (BREACH)' : 'DOOR CLOSED (SECURE)'}
+                {sensor.reed_switch_open ? 'ESHIK OCHIQ (KIRISH)' : 'ESHIK YOPIQ (XAVFSIZ)'}
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5">
                 Profile: <span className="text-sky-400 font-mono">{profileCode}</span>
@@ -250,7 +250,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                 {sensor.co_ppm} <span className="text-xs font-normal text-slate-400">PPM</span>
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5">
-                Profile: <span className="text-sky-400 font-mono">{profileCode}</span> • Crit: 70 PPM
+                Profile: <span className="text-sky-400 font-mono">{profileCode}</span> • Chegara: 70 PPM
               </div>
             </div>
             <span className="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 font-mono text-xs font-bold">
@@ -271,7 +271,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                   sensor.glass_break_detected ? 'text-red-400' : 'text-emerald-400'
                 }`}
               >
-                {sensor.glass_break_detected ? 'SHATTER DETECTED!' : 'WINDOW INTACT'}
+                {sensor.glass_break_detected ? 'OYNA SINISHI ANIQLANDI!' : 'OYNA BUTUN (XAVFSIZ)'}
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5">
                 Profile: <span className="text-sky-400 font-mono">{profileCode}</span>
@@ -307,11 +307,11 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                         : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                 }`}
               >
-                {sensor.status}
+                {sensor.status === 'alarm' ? 'XAVF' : sensor.status === 'warning' ? 'OGOHLANTIRISH' : sensor.status === 'offline' ? 'ALOQASIZ' : 'NORMAL'}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono">
-              Fl {sensor.floor_number} • {sensor.room_number} • {profileCode}
+              {sensor.floor_number}-qavat • {sensor.room_number} • {profileCode}
             </p>
           </div>
         </div>
@@ -323,7 +323,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
         </button>
       </div>
 
-      {/* ThingsBoard-Inspired Entity Navigation Tabs */}
+      {/* Navigation Tabs */}
       <div className="grid grid-cols-3 gap-1 p-2 bg-slate-950/90 border-b border-slate-800 text-xs font-bold">
         <button
           type="button"
@@ -334,7 +334,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Sliders className="w-3.5 h-3.5" /> Telemetry
+          <Sliders className="w-3.5 h-3.5" /> Telemetriya
         </button>
         <button
           type="button"
@@ -345,7 +345,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Layers className="w-3.5 h-3.5" /> 3-Scope Attrs
+          <Layers className="w-3.5 h-3.5" /> Atributlar
         </button>
         <button
           type="button"
@@ -356,7 +356,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Radio className="w-3.5 h-3.5" /> Aloqa &amp; Setup
+          <Radio className="w-3.5 h-3.5" /> Aloqa &amp; Sozlash
         </button>
       </div>
 
@@ -416,7 +416,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
             <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5" /> Shared Attributes Config
+                  <Sliders className="w-3.5 h-3.5" /> Umumiy Sozlamalar (Attributes)
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1 ${
@@ -437,10 +437,10 @@ export const SensorModal: React.FC<SensorModalProps> = ({
               <div className="flex items-center justify-between py-2 border-b border-slate-800/80">
                 <div>
                   <div className="text-sm font-medium text-white flex items-center gap-1.5">
-                    <Shield className="w-4 h-4 text-emerald-400" /> Arm Sensor Alert
+                    <Shield className="w-4 h-4 text-emerald-400" /> Xavfsizlik Rejimi (Qo‘riqlash)
                   </div>
                   <div className="text-xs text-slate-400">
-                    Active 24/7 monitoring &amp; threshold trigger
+                    24/7 monitoring va xavf signallarini faollashtirish
                   </div>
                 </div>
                 <button
@@ -452,13 +452,13 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                       : 'bg-slate-800 text-slate-400 border border-slate-700'
                   }`}
                 >
-                  {armPerimeter ? 'ARMED' : 'DISARMED'}
+                  {armPerimeter ? 'FAOL' : 'NOFAOL'}
                 </button>
               </div>
 
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-slate-300">Dynamic Beacon Sleep Interval</span>
+                  <span className="text-slate-300">Uyg‘onish / Mayoq Oralig‘i (Beacon)</span>
                   <span className="font-mono font-bold text-sky-400">{beaconInterval}s</span>
                 </div>
                 <input
@@ -478,7 +478,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                   onClick={handleSaveConfig}
                   className="px-3 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition disabled:opacity-50"
                 >
-                  Save Desired State
+                  Sozlamani Saqlash
                 </button>
                 <button
                   type="button"
@@ -486,7 +486,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                   onClick={handleCalibrate}
                   className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition disabled:opacity-50"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Re-Calibrate
+                  <RefreshCw className="w-3.5 h-3.5" /> Qayta Kalibrlash
                 </button>
               </div>
 
@@ -500,7 +500,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
             {/* Hardware Fire / Smoke Simulation Trigger */}
             <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/30 space-y-2.5">
               <div className="text-xs font-bold text-red-300 uppercase tracking-wider flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-red-400" /> Emergency Pipeline Stress Test
+                <AlertTriangle className="w-4 h-4 text-red-400" /> Favqulodda Holat Sinovi (Stress Test)
               </div>
               <button
                 type="button"
@@ -518,8 +518,8 @@ export const SensorModal: React.FC<SensorModalProps> = ({
             {/* Scope 1: CLIENT_SCOPE */}
             <div className="p-3.5 rounded-xl bg-slate-950/90 border border-sky-500/30 space-y-2">
               <div className="text-sky-400 font-bold uppercase flex items-center justify-between">
-                <span>1. CLIENT_SCOPE (Device Reported)</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15">Read-Only</span>
+                <span>1. MIJOZ QAMLAMI (Qurilma hisoboti)</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15">Faqat o‘qish</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                 <span className="text-slate-400">chip_id:</span>
@@ -542,7 +542,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
             {/* Scope 2: SHARED_SCOPE (Desired vs Reported) */}
             <div className="p-3.5 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-2.5">
               <div className="text-emerald-400 font-bold uppercase flex items-center justify-between">
-                <span>2. SHARED_SCOPE (Desired vs Reported)</span>
+                <span>2. UMUMIY QAMLAM (Kutilgan va Haqiqiy)</span>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded ${
                     syncStatus === 'SYNCED'
@@ -554,9 +554,9 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-1.5 text-[11px] border-b border-slate-800 pb-1.5 text-slate-400">
-                <span>Key</span>
-                <span className="text-center">Desired</span>
-                <span className="text-right">Reported</span>
+                <span>Kalit</span>
+                <span className="text-center">Kutilgan</span>
+                <span className="text-right">Haqiqiy</span>
               </div>
               <div className="grid grid-cols-3 gap-1.5 text-[11px]">
                 <span className="text-slate-300">beacon_sec</span>
@@ -589,14 +589,14 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                 onClick={handleImmediateWakeupSync}
                 className="w-full mt-2 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-sans font-bold text-xs transition"
               >
-                Simulate ESP32-C3 Wakeup &amp; Sync Shared Attributes Now
+                ESP32-C3 Uyg‘onishini va Sozlamalar Sinxronini Bajarish
               </button>
             </div>
 
             {/* Scope 3: SERVER_SCOPE */}
             <div className="p-3.5 rounded-xl bg-slate-950/90 border border-purple-500/30 space-y-2">
               <div className="text-purple-400 font-bold uppercase">
-                3. SERVER_SCOPE (Platform Internal)
+                3. SERVER QAMLAMI (Platforma ichki)
               </div>
               <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                 <span className="text-slate-400">coord_x / coord_y:</span>
@@ -605,7 +605,7 @@ export const SensorModal: React.FC<SensorModalProps> = ({
                 </span>
                 <span className="text-slate-400">inactivity_watchdog:</span>
                 <span className="text-white text-right">
-                  {attrs?.server?.inactivity_timeout_sec || 600}s (10 min)
+                  {attrs?.server?.inactivity_timeout_sec || 600}s (10 daqiqa)
                 </span>
                 <span className="text-slate-400">claimed_by_user_id:</span>
                 <span className="text-emerald-300 text-right">

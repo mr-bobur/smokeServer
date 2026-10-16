@@ -53,7 +53,8 @@ import {
   getSim7670GatewayStatus,
   resolveAlarmEvent,
   sendSim7670AtCommand,
-  triggerEmergencySimulation
+  triggerEmergencySimulation,
+  updateAlarmStatusHandler
 } from './controllers/emergency.controller';
 import {
   addApartmentToFloor,
@@ -336,6 +337,18 @@ app.post(
   authenticateJWT,
   authorizeRoles('super_admin', 'tenant', 'user'),
   addCommentToAlarm
+);
+app.patch(
+  '/api/emergency/alarms/:id/status',
+  authenticateJWT,
+  authorizeRoles('super_admin', 'tenant', 'user'),
+  updateAlarmStatusHandler
+);
+app.post(
+  '/api/emergency/alarms/:id/status',
+  authenticateJWT,
+  authorizeRoles('super_admin', 'tenant', 'user'),
+  updateAlarmStatusHandler
 );
 app.get('/api/emergency/sim7670', getSim7670GatewayStatus);
 app.post(

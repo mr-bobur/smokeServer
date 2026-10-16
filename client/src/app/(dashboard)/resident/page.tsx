@@ -66,10 +66,14 @@ export default function ResidentPortalPage() {
   const handlePerimeterChange = async (newMode: PerimeterSecurityStatus) => {
     if (!myApartment) return;
     await setApartmentPerimeter(myApartment.id, newMode);
+    const modeLabel =
+      newMode === 'armed_away'
+        ? 'QO‘RIQLASH (UYDAN CHIQDIM)'
+        : newMode === 'armed_home'
+          ? 'QO‘RIQLASH (UYDAMAN)'
+          : 'NOFAOL (OCHILGAN)';
     setStatusFeedback(
-      `Apartment ${myApartment.room_number} perimeter security transitioned to ${newMode
-        .replace('_', ' ')
-        .toUpperCase()} via MQTT Downlink.`
+      `${myApartment.room_number}-xonadon perimetri xavfsizligi ${modeLabel} holatiga o‘tkazildi.`
     );
   };
 
@@ -128,7 +132,7 @@ export default function ResidentPortalPage() {
             </div>
           </div>
           <span className="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400">
-            Receiver: {currentFloor?.has_sub_hub !== false ? `Floor Hub (${currentFloor?.hub_id || 'HUB-B1-FL04'})` : 'Central Gateway Direct'}
+            Qabul qiluvchi: {currentFloor?.has_sub_hub !== false ? `Etaj Hubi (${currentFloor?.hub_id || 'HUB-B1-FL04'})` : 'Markaziy Gateway (To‘g‘ridan-to‘g‘ri)'}
           </span>
         </div>
 
@@ -163,14 +167,14 @@ export default function ResidentPortalPage() {
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
               <Lock className="w-4 h-4 text-sky-400" />
-              Apartment Perimeter Security Controls
+              Xonadon Perimetri Xavfsizlik Boshqaruvi
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Controls Door Reed (`DOOR_REED`) and Window Glass Break (`GLASS_BREAK`) endpoints in {myApartment?.room_number || 'Apt 42'}.
+              {myApartment?.room_number || 'Apt 42'} xonadonidagi Eshik va Oyna sinish datchiklarini boshqarish.
             </p>
           </div>
           <span className="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-sky-400">
-            STATE: {currentPerimeter.replace('_', ' ').toUpperCase()}
+            HOLAT: {currentPerimeter === 'armed_away' ? 'ARM AWAY' : currentPerimeter === 'armed_home' ? 'ARM HOME' : 'DISARMED'}
           </span>
         </div>
 
@@ -188,14 +192,14 @@ export default function ResidentPortalPage() {
               <Shield className="w-6 h-6 text-amber-400" />
               {currentPerimeter === 'armed_away' && (
                 <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
-                  ACTIVE
+                  FAOL
                 </span>
               )}
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">{t('arm_away')}</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Full perimeter lockdown. Instant critical alarm on Door Reed or Glass Break.
+                To‘liq qo‘riqlash. Eshik yoki deraza ochilishi bilan darhol signalizatsiya ishga tushadi.
               </p>
             </div>
           </button>
@@ -213,14 +217,14 @@ export default function ResidentPortalPage() {
               <ShieldCheck className="w-6 h-6 text-emerald-400" />
               {currentPerimeter === 'armed_home' && (
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black">
-                  ACTIVE
+                  FAOL
                 </span>
               )}
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">{t('arm_home')}</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Night / Stay mode. Exterior Door &amp; Window Glass sensors armed.
+                Tungi / Uyda rejimi. Tashqi eshik va deraza datchiklari qo‘riqlashda.
               </p>
             </div>
           </button>
@@ -238,14 +242,14 @@ export default function ResidentPortalPage() {
               <ShieldOff className="w-6 h-6 text-slate-300" />
               {currentPerimeter === 'disarmed' && (
                 <span className="px-2 py-0.5 rounded-full bg-sky-400 text-slate-950 text-[10px] font-black">
-                  ACTIVE
+                  FAOL
                 </span>
               )}
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">{t('disarm')}</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Entry/Exit unlocked. 24/7 Smoke (`SMOKE_MQ2`) protection stays active.
+                Eshik/deraza qo‘riqdan olingan. Tutun datchigi (SMOKE) esa 24/7 doimiy faol qoladi.
               </p>
             </div>
           </button>
@@ -263,10 +267,10 @@ export default function ResidentPortalPage() {
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <Cpu className="w-4 h-4 text-sky-400" />
-            Installed Single-Sensor Endpoints in {myApartment?.room_number || 'Apt 42'} ({mySensors.length} Devices)
+            {myApartment?.room_number || 'Apt 42'} xonadonidagi datchiklar ({mySensors.length} ta)
           </h3>
           <span className="text-[11px] font-mono text-slate-400">
-            1 Device = 1 Dedicated Sensor (Auto-Detected via Intro Packet)
+            1 Qurilma = 1 Datchik (Intro paket orqali avtomatik aniqlangan)
           </span>
         </div>
 
@@ -291,9 +295,9 @@ export default function ResidentPortalPage() {
                 {s.sensor_type === 'TEMP_DS18B20' && `${s.temperature} °C`}
                 {s.sensor_type === 'CO_MQ7' && `${s.co_ppm} PPM`}
                 {s.sensor_type === 'DOOR_REED' &&
-                  (s.reed_switch_open ? 'DOOR OPEN' : 'DOOR CLOSED')}
+                  (s.reed_switch_open ? 'ESHIK OCHIQ' : 'ESHIK YOPIQ')}
                 {s.sensor_type === 'GLASS_BREAK' &&
-                  (s.glass_break_detected ? 'SHATTER ALARM' : 'GLASS INTACT')}
+                  (s.glass_break_detected ? 'OYNA SINDI' : 'OYNA BUTUN')}
               </div>
               <div className="text-[10px] font-mono text-slate-500 truncate">
                 Via {s.parent_node_id} • Bat {s.battery_level}%
@@ -339,11 +343,11 @@ export default function ResidentPortalPage() {
           >
             {isDoorOpen ? (
               <>
-                <AlertTriangle className="w-5 h-5" /> OPEN
+                <AlertTriangle className="w-5 h-5" /> OCHIQ
               </>
             ) : (
               <>
-                <CheckCircle2 className="w-5 h-5" /> CLOSED
+                <CheckCircle2 className="w-5 h-5" /> YOPIQ
               </>
             )}
           </div>
@@ -357,7 +361,7 @@ export default function ResidentPortalPage() {
             <span className="font-mono">{glassSensor?.chip_id || coSensor?.chip_id || 'C3-GLS'}</span>
           </div>
           <div className="text-lg font-black text-emerald-400">
-            {isGlassBroken ? 'SHATTER ALARM' : 'INTACT & SECURE'}
+            {isGlassBroken ? 'OYNA SINDI XAVFI' : 'XAVFSIZ VA BUTUN'}
           </div>
         </div>
       </div>

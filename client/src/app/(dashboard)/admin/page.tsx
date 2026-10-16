@@ -31,6 +31,7 @@ import { API_BASE, getAuthHeaders, useFloorData } from '../../../hooks/useFloorD
 import { BlueprintViewer } from '../../../components/map/BlueprintViewer';
 import { SensorModal } from '../../../components/map/SensorModal';
 import { TelemetryChart } from '../../../components/charts/TelemetryChart';
+import { AlarmManagementSection } from '../../../components/common/AlarmManagementSection';
 import {
   BuildingData,
   FloorData,
@@ -65,6 +66,8 @@ export default function SuperAdminDashboardPage() {
     rooms,
     sensors,
     alarms,
+    refreshAlarms,
+    updateAlarmStatus,
     sim7670,
     setSim7670,
     devicesInventory,
@@ -852,8 +855,8 @@ export default function SuperAdminDashboardPage() {
         {/* Bottom Hardware Status Summary */}
         <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] font-mono text-slate-400 space-y-1">
           <div className="flex items-center justify-between">
-            <span>1-Sensor Rule:</span>
-            <span className="text-emerald-400 font-bold">ACTIVE</span>
+            <span>1-Qurilma = 1-Sensor:</span>
+            <span className="text-emerald-400 font-bold">FAOL</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Intro Packet:</span>
@@ -1939,64 +1942,16 @@ export default function SuperAdminDashboardPage() {
            =================================================================== */}
         {activeSection === 'alarms' && (
           <div className="space-y-6">
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <AlertOctagon className="w-5 h-5 text-red-400" />
-                  Stateful Alarm Lifecycle &amp; 112 Dispatch Jurnali
-                </h2>
-                <button
-                  type="button"
-                  onClick={() =>
-                    triggerTestAlarm({
-                      event_type: 'SMOKE_CRITICAL',
-                      severity: 'critical',
-                      smoke_val: 710,
-                      temp_val: 64
-                    })
-                  }
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
-                >
-                  + Simulate Fire Alarm
-                </button>
-              </div>
-
-              <div className="space-y-2.5">
-                {alarms.map((alm) => (
-                  <div
-                    key={alm.id}
-                    className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-white">
-                          {alm.alarm_code}
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-mono text-[10px] font-bold">
-                          {alm.lifecycle_state || alm.status.toUpperCase()}
-                        </span>
-                        <span className="text-xs font-mono text-amber-300">
-                          Count: {alm.trigger_count || 1}x • Peak: {alm.peak_value || alm.smoke_val} PPM
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400 font-mono">
-                        Floor {alm.floor_number} • {alm.room_number} • Chip: {alm.chip_id}
-                      </div>
-                    </div>
-                    {alm.status !== 'resolved' && (
-                      <button
-                        type="button"
-                        onClick={() => handleResolveAlarm(alm.id)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold"
-                      >
-                        Clear &amp; Resolve
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
+            <AlarmManagementSection
+              alarms={alarms}
+              buildings={buildings}
+              floors={floors}
+              selectedBuildingId={selectedBuildingId}
+              onUpdateAlarmStatus={updateAlarmStatus}
+              onTriggerTestAlarm={triggerTestAlarm}
+              onRefreshAlarms={refreshAlarms}
+              userRole="super_admin"
+            />
             <TelemetryChart sensor={selectedSensor} />
           </div>
         )}

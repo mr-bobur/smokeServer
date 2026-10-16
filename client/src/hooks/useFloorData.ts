@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   AlarmEventData,
+  AlarmManagedStatus,
   BuildingData,
   DevicesInventoryData,
   FloorData,
@@ -652,6 +653,83 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
       const data = await res.json();
       await fetchFloorDetails(selectedFloor, selectedBuildingId);
       await fetchBuildingOverview(selectedBuildingId);
+      if (data.alarm) {
+        setAlarms((prev) => [data.alarm, ...prev.filter((a) => a.id !== data.alarm.id)]);
+      }
+      return data.alarm as AlarmEventData;
+    }
+    return null;
+  };
+
+  const refreshAlarms = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/emergency/alarms`, {
+        headers: getAuthHeaders(role)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAlarms(data.alarms || []);
+      }
+    } catch {
+      // Non-blocking
+    }
+  };
+
+  const updateAlarmStatus = async (params: {
+    alarmId: number;
+    status: AlarmManagedStatus;
+    resolution_outcome?: string;
+    comment?: string;
+  }) => {
+    const res = await fetch(`${API_BASE}/api/emergency/alarms/${params.alarmId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(role),
+      body: JSON.stringify({
+        status: params.status,
+        resolution_outcome: params.resolution_outcome,
+        comment: params.comment
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setAlarms((prev) =>
+        prev.map((a) => (a.id === params.alarmId ? { ...a, ...data.alarm } : a))
+      );
+      await fetchFloorDetails(selectedFloor, selectedBuildingId);
+      return data.alarm as AlarmEventData;
+    }
+    return null;
+  };
+
+  const resolveAlarm = async (alarmId: number, comment?: string) => {
+    const res = await fetch(`${API_BASE}/api/emergency/alarms/${alarmId}/resolve`, {
+      method: 'POST',
+      headers: getAuthHeaders(role),
+      body: JSON.stringify({ comment })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setAlarms((prev) =>
+        prev.map((a) => (a.id === alarmId ? { ...a, ...data.alarm } : a))
+      );
+      await fetchFloorDetails(selectedFloor, selectedBuildingId);
+      return data.alarm as AlarmEventData;
+    }
+    return null;
+  };
+
+  const acknowledgeAlarm = async (alarmId: number, comment?: string) => {
+    const res = await fetch(`${API_BASE}/api/emergency/alarms/${alarmId}/acknowledge`, {
+      method: 'POST',
+      headers: getAuthHeaders(role),
+      body: JSON.stringify({ comment })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setAlarms((prev) =>
+        prev.map((a) => (a.id === alarmId ? { ...a, ...data.alarm } : a))
+      );
+      await fetchFloorDetails(selectedFloor, selectedBuildingId);
       return data.alarm as AlarmEventData;
     }
     return null;
@@ -671,6 +749,11 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
     sensors,
     setSensors,
     alarms,
+    setAlarms,
+    refreshAlarms,
+    updateAlarmStatus,
+    resolveAlarm,
+    acknowledgeAlarm,
     sim7670,
     setSim7670,
     devicesInventory,

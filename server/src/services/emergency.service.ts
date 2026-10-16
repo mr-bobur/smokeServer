@@ -3,7 +3,9 @@ import { dbStore, isMysqlConnected, mysqlPool } from '../config/database';
 import {
   AlarmEventRecord,
   AlarmEventType,
+  AlarmManagedStatus,
   AlarmSeverity,
+  AlarmStatusHistoryItem,
   Emergency112Payload
 } from '../types';
 import { socketService } from './socket.service';
@@ -82,6 +84,19 @@ class EmergencyService {
       existingActiveAlarm.co_val = coVal;
       existingActiveAlarm.updated_at = new Date().toISOString();
 
+      if (!existingActiveAlarm.status_history) existingActiveAlarm.status_history = [];
+      existingActiveAlarm.status_history.unshift({
+        id: `HIST-${Date.now()}`,
+        from_status: existingActiveAlarm.managed_status || 'new_alarm',
+        to_status: existingActiveAlarm.managed_status || 'new_alarm',
+        user_id: 0,
+        user_name: 'Tizim (Takroriy signal)',
+        user_role: 'system',
+        resolution_outcome: `Takroriy signal qayd etildi (${existingActiveAlarm.trigger_count}-marta)`,
+        comment: `Datchik yangi ko'rsatkich yubordi: ${currentPrimaryMetric}. Maksimal: ${existingActiveAlarm.peak_value}`,
+        timestamp: new Date().toISOString()
+      });
+
       socketService.emitGlobal('ALARM_TRIGGERED', {
         alarm: existingActiveAlarm,
         deduplicated: true,
@@ -113,6 +128,21 @@ class EmergencyService {
       event_type: eventType,
       severity,
       status: 'active',
+      managed_status: 'new_alarm',
+      resolution_outcome: null,
+      status_history: [
+        {
+          id: `HIST-${Date.now()}-1`,
+          from_status: null,
+          to_status: 'new_alarm',
+          user_id: 0,
+          user_name: 'Tizim (Sensor Ingestion)',
+          user_role: 'system',
+          resolution_outcome: `Signal qabul qilindi. Xavf: ${severity}`,
+          comment: `Datchik ${sensor.chip_id} (${sensor.room_number}) chegarani kesib o'tdi: ${currentPrimaryMetric}`,
+          timestamp: nowIso
+        }
+      ],
       lifecycle_state: 'ACTIVE_UNACK',
       trigger_count: 1,
       peak_value: currentPrimaryMetric,
@@ -128,7 +158,7 @@ class EmergencyService {
           id: `CMT-${Date.now()}`,
           user_id: 0,
           user_name: 'ThingsBoard Safety Engine',
-          comment: `Originator ${sensor.chip_id} (${sensor.profile_code}) crossed critical threshold (${currentPrimaryMetric}). State -> ACTIVE_UNACK.`,
+          comment: `Originator ${sensor.chip_id} (${sensor.profile_code}) crossed critical threshold (${currentPrimaryMetric}). State -> ACTIVE_UNACK (new_alarm).`,
           created_at: nowIso
         }
       ],
@@ -245,7 +275,9 @@ class EmergencyService {
 
     const nowIso = new Date().toISOString();
     const user = dbStore.users.find((u) => u.id === userId) || dbStore.users[0];
+    const prevStatus = alarm.managed_status || 'new_alarm';
     alarm.status = 'acknowledged';
+    alarm.managed_status = 'seen_alarm';
     alarm.lifecycle_state =
       alarm.lifecycle_state === 'CLEARED_UNACK' ? 'CLEARED_ACK' : 'ACTIVE_ACK';
     alarm.acknowledged_by = user.id;
@@ -254,6 +286,23 @@ class EmergencyService {
     alarm.updated_at = nowIso;
     alarm.countdown_remaining_sec = 0;
 
+    if (!alarm.resolution_outcome) {
+      alarm.resolution_outcome = "Signal ko'rib chiqildi (Mas'ul xodim nazoratida)";
+    }
+
+    if (!alarm.status_history) alarm.status_history = [];
+    alarm.status_history.unshift({
+      id: `HIST-${Date.now()}`,
+      from_status: prevStatus,
+      to_status: 'seen_alarm',
+      user_id: user.id,
+      user_name: user.name,
+      user_role: user.role,
+      resolution_outcome: alarm.resolution_outcome,
+      comment: commentText || `${user.name} signalni ko'rib chiqish uchun qabul qildi.`,
+      timestamp: nowIso
+    });
+
     if (!alarm.comments) alarm.comments = [];
     alarm.comments.push({
       id: `CMT-${Date.now()}`,
@@ -261,7 +310,7 @@ class EmergencyService {
       user_name: user.name,
       comment:
         commentText ||
-        `Alarm acknowledged by ${user.name}. Lifecycle -> ${alarm.lifecycle_state}.`,
+        `Alarm acknowledged by ${user.name} (seen_alarm). Lifecycle -> ${alarm.lifecycle_state}.`,
       created_at: nowIso
     });
 
@@ -292,6 +341,10 @@ class EmergencyService {
       alarm,
       sensor
     });
+    socketService.emitGlobal('ALARM_STATUS_UPDATED', {
+      alarm,
+      sensor
+    });
 
     return alarm;
   }
@@ -308,8 +361,10 @@ class EmergencyService {
 
     const nowIso = new Date().toISOString();
     const user = dbStore.users.find((u) => u.id === userId) || dbStore.users[0];
+    const prevStatus = alarm.managed_status || (alarm.acknowledged_by ? 'seen_alarm' : 'new_alarm');
     alarm.status = 'resolved';
-    alarm.lifecycle_state = alarm.acknowledged_by ? 'CLEARED_ACK' : 'CLEARED_ACK';
+    alarm.managed_status = 'managed_alarm';
+    alarm.lifecycle_state = 'CLEARED_ACK';
     alarm.cleared_at = nowIso;
     alarm.updated_at = nowIso;
     if (!alarm.acknowledged_by) {
@@ -318,6 +373,21 @@ class EmergencyService {
       alarm.acknowledged_at = nowIso;
     }
     alarm.countdown_remaining_sec = 0;
+    alarm.resolution_outcome =
+      commentText || "Xavf to'liq bartaraf etildi va holat normal me'yorga qaytarildi.";
+
+    if (!alarm.status_history) alarm.status_history = [];
+    alarm.status_history.unshift({
+      id: `HIST-${Date.now()}`,
+      from_status: prevStatus,
+      to_status: 'managed_alarm',
+      user_id: user.id,
+      user_name: user.name,
+      user_role: user.role,
+      resolution_outcome: alarm.resolution_outcome,
+      comment: commentText || `${user.name} tomonidan xavf bartaraf etilgani tasdiqlandi.`,
+      timestamp: nowIso
+    });
 
     if (!alarm.comments) alarm.comments = [];
     alarm.comments.push({
@@ -326,7 +396,7 @@ class EmergencyService {
       user_name: user.name,
       comment:
         commentText ||
-        `Hazard cleared & verified by ${user.name}. Lifecycle -> CLEARED_ACK.`,
+        `Hazard cleared & managed by ${user.name}. Lifecycle -> CLEARED_ACK (managed_alarm).`,
       created_at: nowIso
     });
 
@@ -342,6 +412,130 @@ class EmergencyService {
     }
 
     socketService.emitGlobal('ALARM_RESOLVED', { alarm, sensor });
+    socketService.emitGlobal('ALARM_STATUS_UPDATED', { alarm, sensor });
+    return alarm;
+  }
+
+  /**
+   * Status change handler supporting the 3 core states:
+   * - 'new_alarm'    : Yangi kelgan signal
+   * - 'seen_alarm'   : Mas'ul shaxs ko'rgan va tekshirayotgan signal
+   * - 'managed_alarm': Boshqarilgan / Hal qilingan signal
+   */
+  public async updateAlarmStatus(params: {
+    alarmId: number;
+    newStatus: AlarmManagedStatus;
+    userId: number;
+    resolutionOutcome?: string;
+    comment?: string;
+  }): Promise<AlarmEventRecord | null> {
+    const alarm = dbStore.alarmEvents.find((a) => a.id === params.alarmId);
+    if (!alarm) return null;
+
+    const nowIso = new Date().toISOString();
+    const user = dbStore.users.find((u) => u.id === params.userId) || dbStore.users[0];
+    const prevStatus: AlarmManagedStatus =
+      alarm.managed_status ||
+      (alarm.status === 'resolved'
+        ? 'managed_alarm'
+        : alarm.status === 'acknowledged'
+        ? 'seen_alarm'
+        : 'new_alarm');
+
+    alarm.managed_status = params.newStatus;
+    alarm.updated_at = nowIso;
+
+    if (params.resolutionOutcome) {
+      alarm.resolution_outcome = params.resolutionOutcome;
+    }
+
+    if (params.newStatus === 'new_alarm') {
+      alarm.status = 'active';
+      alarm.lifecycle_state = 'ACTIVE_UNACK';
+      alarm.cleared_at = null;
+    } else if (params.newStatus === 'seen_alarm') {
+      this.clearCountdown(params.alarmId);
+      alarm.status = 'acknowledged';
+      alarm.lifecycle_state = 'ACTIVE_ACK';
+      alarm.countdown_remaining_sec = 0;
+      alarm.acknowledged_by = user.id;
+      alarm.acknowledged_by_name = user.name;
+      alarm.acknowledged_at = nowIso;
+      if (!alarm.resolution_outcome) {
+        alarm.resolution_outcome = params.resolutionOutcome || "Signal ko'rib chiqilmoqda";
+      }
+    } else if (params.newStatus === 'managed_alarm') {
+      this.clearCountdown(params.alarmId);
+      alarm.status = 'resolved';
+      alarm.lifecycle_state = 'CLEARED_ACK';
+      alarm.countdown_remaining_sec = 0;
+      alarm.cleared_at = nowIso;
+      if (!alarm.acknowledged_by) {
+        alarm.acknowledged_by = user.id;
+        alarm.acknowledged_by_name = user.name;
+        alarm.acknowledged_at = nowIso;
+      }
+      alarm.resolution_outcome =
+        params.resolutionOutcome ||
+        alarm.resolution_outcome ||
+        "Xavf to'liq bartaraf etildi va signal muvaffaqiyatli yakunlandi";
+
+      const sensor = dbStore.sensors.find((s) => s.id === alarm.sensor_id);
+      if (sensor) {
+        sensor.status = 'online';
+        sensor.smoke_ppm = 24.0;
+        sensor.temperature = 23.8;
+        sensor.co_ppm = 5.2;
+        sensor.reed_switch_open = false;
+        sensor.glass_break_detected = false;
+        sensor.beacon_interval_seconds = 600;
+        sensor.last_seen = nowIso;
+      }
+    }
+
+    if (!alarm.status_history) alarm.status_history = [];
+    alarm.status_history.unshift({
+      id: `HIST-${Date.now()}`,
+      from_status: prevStatus,
+      to_status: params.newStatus,
+      user_id: user.id,
+      user_name: user.name,
+      user_role: user.role,
+      resolution_outcome: params.resolutionOutcome || alarm.resolution_outcome || undefined,
+      comment: params.comment || `Status o'zgartirildi: ${prevStatus} -> ${params.newStatus}`,
+      timestamp: nowIso
+    });
+
+    if (params.comment || params.resolutionOutcome) {
+      if (!alarm.comments) alarm.comments = [];
+      alarm.comments.push({
+        id: `CMT-${Date.now()}`,
+        user_id: user.id,
+        user_name: user.name,
+        comment: params.resolutionOutcome
+          ? `[Xulosa: ${params.resolutionOutcome}] ${params.comment || ''}`.trim()
+          : (params.comment || ''),
+        created_at: nowIso
+      });
+    }
+
+    if (isMysqlConnected && mysqlPool) {
+      try {
+        await mysqlPool.query(
+          `UPDATE alarm_events SET status = ?, lifecycle_state = ?, updated_at = NOW() WHERE id = ?`,
+          [alarm.status, alarm.lifecycle_state, alarm.id]
+        );
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    const sensor = dbStore.sensors.find((s) => s.id === alarm.sensor_id);
+    socketService.emitGlobal('ALARM_STATUS_UPDATED', {
+      alarm,
+      sensor
+    });
+
     return alarm;
   }
 

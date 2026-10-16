@@ -23,10 +23,10 @@ export const FloorSelector: React.FC<FloorSelectorProps> = ({
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-sky-400" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-            9-Story Isometric Stack
+            Qavatlar Ketma-ketligi
           </h3>
         </div>
-        <span className="text-[10px] font-mono text-slate-400">RS485 Trunk</span>
+        <span className="text-[10px] font-mono text-slate-400">RS485 Magistral</span>
       </div>
 
       <div className="space-y-1.5">
@@ -75,11 +75,11 @@ export const FloorSelector: React.FC<FloorSelectorProps> = ({
               <div className="flex items-center gap-1.5 shrink-0">
                 {hasAlarm ? (
                   <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> ALARM
+                    <AlertTriangle className="w-3 h-3" /> XAVF
                   </span>
                 ) : hasWarn ? (
                   <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono flex items-center gap-1">
-                    <BatteryWarning className="w-3 h-3" /> WARN
+                    <BatteryWarning className="w-3 h-3" /> OGOH
                   </span>
                 ) : (
                   <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-mono flex items-center gap-1">

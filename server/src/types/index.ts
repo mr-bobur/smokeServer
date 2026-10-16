@@ -277,6 +277,26 @@ export type AlarmSeverity = 'warning' | 'critical' | 'emergency';
 export type AlarmStatus = 'active' | 'acknowledged' | 'resolved' | 'escalated_to_112';
 
 /**
+ * 3-State Operational Alarm Management:
+ * - 'new_alarm'    : Yangi kelgan, hali ko'rilmagan signal
+ * - 'seen_alarm'   : Mas'ul shaxs (admin / shirkat) tomonidan ko'rilgan va tekshirilayotgan signal
+ * - 'managed_alarm': Xavf bartaraf etilgan yoki hal qilingan, yakunlangan signal
+ */
+export type AlarmManagedStatus = 'new_alarm' | 'seen_alarm' | 'managed_alarm';
+
+export interface AlarmStatusHistoryItem {
+  id: string;
+  from_status: AlarmManagedStatus | null;
+  to_status: AlarmManagedStatus;
+  user_id: number;
+  user_name: string;
+  user_role?: string;
+  resolution_outcome?: string;
+  comment?: string;
+  timestamp: string;
+}
+
+/**
  * ThingsBoard 4-State Alarm Lifecycle
  */
 export type AlarmLifecycleState =
@@ -320,6 +340,9 @@ export interface AlarmEventRecord {
   event_type: AlarmEventType;
   severity: AlarmSeverity;
   status: AlarmStatus;
+  managed_status?: AlarmManagedStatus;
+  resolution_outcome?: string | null;
+  status_history?: AlarmStatusHistoryItem[];
   lifecycle_state: AlarmLifecycleState;
   trigger_count: number;
   peak_value: number | null;

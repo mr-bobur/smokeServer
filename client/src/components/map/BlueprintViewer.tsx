@@ -235,22 +235,22 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
       <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 z-30 relative">
         <div className="flex items-center gap-3">
           <div className="px-2.5 py-1 rounded-lg bg-sky-500/15 border border-sky-500/40 text-sky-400 text-xs font-mono font-bold">
-            FLOOR {floor?.floor_number || 4} TOPOLOGY
+            {floor?.floor_number || 4}-QAVAT TOPOLOGIYASI
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">
               {floor?.building_name ? `${floor.building_name} • ` : ''}
-              {floor?.name || 'Floor 4 — Residential Apartments'}
+              {floor?.name || '4-Qavat — Aholi Xonadonlari'}
             </h3>
             <p className="text-[11px] text-slate-400 font-mono">
               {floor?.has_sub_hub !== false ? (
                 <>
-                  Floor Sub-Hub: <span className="text-emerald-400 font-bold">{floor?.hub_id || 'HUB-B1-FL04'}</span> • DIP:{' '}
+                  Etaj Sub-Hubi: <span className="text-emerald-400 font-bold">{floor?.hub_id || 'HUB-B1-FL04'}</span> • DIP:{' '}
                   <span className="text-amber-400 font-bold">{floor?.dip_binary || '0100'}</span> • LiPo: {floor?.hub_battery_pct ?? 97}%
                 </>
               ) : (
                 <span className="text-amber-400 font-bold">
-                  NO FLOOR HUB — DIRECT CENTRAL GATEWAY MODE ({floor?.hub_id})
+                  ETAJ HUBI YO‘Q — TO‘G‘RIDAN-TO‘G‘RI MARKAZIY GATEWAY REJIMI ({floor?.hub_id})
                 </span>
               )}
             </p>
@@ -272,7 +272,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
                   ? 'bg-emerald-500 text-slate-950 border-emerald-300 animate-pulse'
                   : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/50'
               }`}
-              title="Drag this button onto any room on the map or click and tap a spot on the map!"
+              title="Yangi datchikni xaritadagi xonadonga surib tashlang yoki bosing!"
             >
               <PlusCircle className="w-4 h-4" />
               <span>{t('drag_new_device')}</span>
@@ -290,7 +290,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
               }`}
             >
               <Move className="w-3.5 h-3.5" />
-              {dragMode ? 'Move Existing Pins: ON' : 'Move Pins'}
+              {dragMode ? 'Datchik joyini surish: YOQILGAN' : 'Datchikni surish'}
             </button>
           )}
 
@@ -300,7 +300,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
               onClick={() => setShowUrlModal(!showUrlModal)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition"
             >
-              <Upload className="w-3.5 h-3.5" /> Blueprint PNG
+              <Upload className="w-3.5 h-3.5" /> Chizma PNG/SVG
             </button>
           )}
 
@@ -309,7 +309,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
               type="button"
               onClick={() => setZoom((z) => Math.max(0.7, Number((z - 0.15).toFixed(2))))}
               className="p-1.5 text-slate-400 hover:text-white transition"
-              title="Zoom Out"
+              title="Kichraytirish"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
@@ -320,7 +320,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
               type="button"
               onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
               className="p-1.5 text-slate-400 hover:text-white transition"
-              title="Zoom In"
+              title="Kattalashtirish"
             >
               <ZoomIn className="w-4 h-4" />
             </button>
@@ -328,7 +328,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
               type="button"
               onClick={resetTransform}
               className="p-1.5 text-slate-400 hover:text-white border-l border-slate-800 transition"
-              title="Reset Pan & Zoom"
+              title="Masshtabni tiklash"
             >
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
@@ -341,7 +341,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
         <div className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold flex items-center justify-between z-30 relative">
           <span className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 animate-spin" />
-            {t('drag_hint')} (Click anywhere on the topology map below to drop the sensor!)
+            {t('drag_hint')}
           </span>
           <button
             type="button"
@@ -360,7 +360,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
             type="text"
             value={customBgUrl}
             onChange={(e) => setCustomBgUrl(e.target.value)}
-            placeholder="Paste custom Floor Plan PNG/SVG URL..."
+            placeholder="Chizma PNG/SVG havolasini kiriting..."
             className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white"
           />
           <button
@@ -373,7 +373,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
             }}
             className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold"
           >
-            Apply Blueprint
+            Chizmani qo‘llash
           </button>
         </div>
       )}
@@ -442,7 +442,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
               fontSize="11"
               fontFamily="monospace"
             >
-              ELEVATOR &amp; STAIR CORE
+              LIFT VA ZINA MAYDONI
             </text>
             <line
               x1="500"
@@ -511,9 +511,9 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 border-t border-slate-800/60 pt-1">
-                  <span>APT ID #{rm.id}</span>
+                  <span>XONADON #{rm.id}</span>
                   <span className="flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> SINGLE-SENSOR NODES
+                    <Lock className="w-2.5 h-2.5" /> 1-QURILMA = 1-SENSOR
                   </span>
                 </div>
               </div>
@@ -534,10 +534,10 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
             <Cpu className="w-3.5 h-3.5" />
             <span>
               {activePairingSession
-                ? `PAIRING MODE ACTIVE: ${activePairingSession.target_receiver_id}`
+                ? `ULANISH REJIMI FAOL: ${activePairingSession.target_receiver_id}`
                 : floor?.has_sub_hub !== false
                   ? `SUB-HUB ${floor?.hub_id || 'HUB-FL04'} [DIP:${floor?.dip_binary || '0100'}]`
-                  : `DIRECT CENTRAL GATEWAY LINK`}
+                  : `MARKAZIY GATEWAYGA TO‘G‘RIDAN-TO‘G‘RI ALOQA`}
             </span>
           </div>
 
@@ -649,7 +649,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
 
               <div>
                 <label className="text-[11px] font-mono text-slate-400 block mb-1">
-                  Raw BLE / RS485 Intro Handshake Packet Hex:
+                  Xom BLE / RS485 Kirish Paketi (Intro Hex):
                 </label>
                 <input
                   type="text"
@@ -675,7 +675,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
                   onClick={handleCompleteIntroHandshake}
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition"
                 >
-                  {pairingBusy ? 'Decoding Intro Packet...' : t('complete_intro_pairing')}
+                  {pairingBusy ? 'Paket dekodlanmoqda...' : t('complete_intro_pairing')}
                 </button>
               </div>
             </div>
@@ -687,19 +687,19 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
           <div className="flex flex-wrap items-center gap-4">
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-              Online (1 Sensor / Device)
+              Onlayn (1 Sensor / Qurilma)
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-              Warning / Low Bat
+              Ogohlantirish / Batareya past
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
-              Critical Alarm
+              Kritik Xavf
             </span>
           </div>
           <div className="text-emerald-400 font-mono font-semibold">
-            Drag &amp; Drop &quot;{t('drag_new_device')}&quot; onto any room to trigger Hub/Gateway Pairing Mode!
+            &quot;{t('drag_new_device')}&quot; tugmasini xonadonga surib tashlang va Hub/Gateway avtomatik ulanish rejimiga o‘tadi!
           </div>
         </div>
       </div>

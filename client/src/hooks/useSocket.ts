@@ -129,9 +129,22 @@ export const useSocket = () => {
     socket.on('ALARM_RESOLVED', (data: { alarm: AlarmEventData }) => {
       setActiveAlarm((prev) => (prev && prev.id === data.alarm.id ? null : prev));
       pushToast(
-        'Alarm Resolved',
-        `Incident ${data.alarm.alarm_code} marked as resolved.`,
+        'Xavf bartaraf etildi',
+        `Signal ${data.alarm.alarm_code} hal qilindi va yakunlandi.`,
         'info'
+      );
+    });
+
+    socket.on('ALARM_STATUS_UPDATED', (data: { alarm: AlarmEventData }) => {
+      if (data.alarm.managed_status === 'managed_alarm') {
+        setActiveAlarm((prev) => (prev && prev.id === data.alarm.id ? null : prev));
+      } else if (data.alarm.managed_status === 'new_alarm') {
+        setActiveAlarm(data.alarm);
+      }
+      pushToast(
+        `Signal statusi o'zgardi: ${data.alarm.managed_status}`,
+        `${data.alarm.alarm_code}: ${data.alarm.resolution_outcome || 'Status yangilandi'}`,
+        data.alarm.managed_status === 'managed_alarm' ? 'success' : 'warning'
       );
     });
 

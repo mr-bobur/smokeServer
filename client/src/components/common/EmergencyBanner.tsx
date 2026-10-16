@@ -46,13 +46,13 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
                   {alarm.alarm_code}
                 </span>
                 <span className="text-xs font-mono uppercase tracking-widest text-red-100">
-                  QoS 2 PRIORITY ALARM • SIM7670 SMS &amp; VOICE TRIGGERED
+                  QoS 2 YUQORI DARAJALI XAVF • SIM7670 SMS VA QO‘NG‘IROQ YUBORILDI
                 </span>
               </div>
               <h2 className="text-lg font-extrabold text-white tracking-wide">
                 {isDispatched
-                  ? '112 STATE EMERGENCY API DISPATCHED (FVV UZBEKISTAN)'
-                  : `CRITICAL HAZARD: ${alarm.event_type} — FLOOR ${alarm.floor_number}, ${alarm.room_number}`}
+                  ? '112 FVV DAVLAT FAVQULODDA XIZMATIGA CHAQIRUV YUBORILDI'
+                  : `FAVQULODDA XAVF: ${alarm.event_type} — ${alarm.floor_number}-QAVAT, ${alarm.room_number}`}
               </h2>
             </div>
           </div>
@@ -60,7 +60,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
           <button
             onClick={onDismissModal}
             className="p-1.5 rounded-lg bg-black/30 text-white hover:bg-black/50 transition"
-            title="Minimize Overlay"
+            title="Oynani kichraytirish"
           >
             <X className="w-5 h-5" />
           </button>
@@ -71,9 +71,9 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
           {/* Sensor Telemetry Snapshot */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-900 border border-red-500/40">
-              <span className="text-xs text-slate-400 block">Location &amp; Node</span>
+              <span className="text-xs text-slate-400 block">Joylashuv va Qurilma</span>
               <span className="text-base font-bold text-white">
-                Floor {alarm.floor_number} • {alarm.room_number}
+                {alarm.floor_number}-qavat • {alarm.room_number}
               </span>
               <span className="text-xs font-mono text-red-300 block mt-0.5">
                 ESP32-C3: {alarm.chip_id}
@@ -81,19 +81,19 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900 border border-red-500/40">
-              <span className="text-xs text-slate-400 block">MQ-2 Smoke Reading</span>
+              <span className="text-xs text-slate-400 block">MQ-2 Tutun ko‘rsatkichi</span>
               <span className="text-2xl font-extrabold font-mono text-red-400">
                 {alarm.smoke_val ?? 680.5} PPM
               </span>
-              <span className="text-[11px] text-slate-400 block">Threshold: 400 PPM</span>
+              <span className="text-[11px] text-slate-400 block">Me’yor chegarasi: 400 PPM</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900 border border-red-500/40">
-              <span className="text-xs text-slate-400 block">DS18B20 Temperature</span>
+              <span className="text-xs text-slate-400 block">DS18B20 Harorat</span>
               <span className="text-2xl font-extrabold font-mono text-amber-400">
                 {alarm.temp_val ?? 62.4} °C
               </span>
-              <span className="text-[11px] text-slate-400 block">Threshold: 60.0 °C</span>
+              <span className="text-[11px] text-slate-400 block">Me’yor chegarasi: 60.0 °C</span>
             </div>
           </div>
 
@@ -103,7 +103,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-bold text-red-200">
                   <Volume2 className="w-4 h-4 text-red-400 animate-ping" />
-                  <span>Automated 112 State Emergency Escalation Countdown</span>
+                  <span>112 FVV Davlat Favqulodda Xizmatiga Avtomatik Chiqish Hisoblagichi</span>
                 </div>
                 <span className="text-2xl font-mono font-black text-white bg-red-600 px-3 py-1 rounded-lg">
                   {remaining}s
@@ -118,9 +118,9 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
               </div>
 
               <p className="text-xs text-slate-300">
-                SIM7670 4G Gateway has transmitted emergency SMS (`AT+CMGS`) and initiated voice alert (`ATD+998712000000;`). If not acknowledged within{' '}
-                <strong className="text-white">{remaining} seconds</strong>, the system will automatically dispatch fire brigade coordinates to the{' '}
-                <strong className="text-amber-300">112 State Emergency API</strong>.
+                SIM7670 4G Gateway favqulodda SMS (`AT+CMGS`) va ovozli qo‘ng‘iroq (`ATD+998712000000;`) yubordi. Agar{' '}
+                <strong className="text-white">{remaining} soniya</strong> ichida bekor qilinmasa, tizim avtomatik ravishda yong‘in xavfsizligi koordinatalarini{' '}
+                <strong className="text-amber-300">112 FVV Davlat Xizmatiga</strong> jo‘natadi.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -130,7 +130,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
                   className="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Acknowledge False Alarm (Cancel 112)
+                  Soxta signal deb bekor qilish (112 ni to‘xtatish)
                 </button>
 
                 <button
@@ -139,7 +139,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
                   className="py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-600/40 transition"
                 >
                   <PhoneCall className="w-4 h-4" />
-                  Dispatch 112 Fire Brigade Now
+                  112 FVV O‘t O‘chirish Guruhini Zudlik Bilan Chaqirish
                 </button>
               </div>
             </div>
@@ -148,10 +148,10 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                   <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
-                  112 State Emergency API Payload Dispatched
+                  112 FVV Davlat Xizmatiga Ma’lumotlar Paketi Uzatildi
                 </span>
                 <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-mono">
-                  HTTP 200 • UNIT EN ROUTE (ETA 5 MIN)
+                  HTTP 200 • BRIGADA YO‘LDA (KUTILISH 5 DAQ)
                 </span>
               </div>
 
@@ -160,7 +160,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
                   alarm.emergency_112_payload || {
                     agency_code: 'EMERGENCY_UZ_112',
                     building_id: 'SMART-BLD-TASHKENT-09',
-                    address: 'Amir Timur Avenue 108, Block B',
+                    address: 'Amir Temur shoh ko‘chasi 108, B blok',
                     floor_number: alarm.floor_number,
                     room_number: alarm.room_number,
                     threat_type: 'FIRE_SMOKE_HAZARD'
@@ -176,7 +176,7 @@ export const EmergencyBanner: React.FC<EmergencyBannerProps> = ({
                   onClick={() => onAcknowledgeFalseAlarm(alarm.id)}
                   className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5"
                 >
-                  <ShieldAlert className="w-4 h-4 text-emerald-400" /> Mark Incident Contained &amp; Reset Siren
+                  <ShieldAlert className="w-4 h-4 text-emerald-400" /> Voqea bartaraf etildi deb belgilash va sirenani o‘chirish
                 </button>
               </div>
             </div>

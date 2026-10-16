@@ -2,15 +2,48 @@ import { Request, Response } from 'express';
 import { dbStore } from '../config/database';
 import { emergencyService } from '../services/emergency.service';
 import { sim7670Service } from '../services/sim7670.service';
-import { AlarmEventType, AlarmSeverity, AuthenticatedRequest } from '../types';
+import { AlarmEventType, AlarmManagedStatus, AlarmSeverity, AuthenticatedRequest } from '../types';
 import { isMqttBrokerConnected, mqttClient } from '../config/mqtt';
 
 export const getAlarmsList = (req: Request, res: Response): void => {
   const statusFilter = req.query.status as string | undefined;
+  const managedStatusFilter = req.query.managed_status as string | undefined;
   const lifecycleFilter = req.query.lifecycle_state as string | undefined;
   const floorFilter = req.query.floor ? Number(req.query.floor) : undefined;
+  const buildingFilter = req.query.building_id ? Number(req.query.building_id) : undefined;
 
-  let list = dbStore.alarmEvents;
+  let list = dbStore.alarmEvents.map((a) => {
+    if (!a.managed_status) {
+      a.managed_status =
+        a.status === 'resolved'
+          ? 'managed_alarm'
+          : a.status === 'acknowledged'
+          ? 'seen_alarm'
+          : 'new_alarm';
+    }
+    if (!a.status_history || a.status_history.length === 0) {
+      a.status_history = [
+        {
+          id: `HIST-${a.id}-init`,
+          from_status: null,
+          to_status: a.managed_status,
+          user_id: a.acknowledged_by || 0,
+          user_name: a.acknowledged_by_name || 'Tizim',
+          user_role: 'system',
+          resolution_outcome:
+            a.resolution_outcome ||
+            (a.status === 'resolved' ? 'Xavf bartaraf etilgan' : 'Signal qayd etilgan'),
+          comment: `Dastlabki signal holati: ${a.managed_status}`,
+          timestamp: a.created_at
+        }
+      ];
+    }
+    return a;
+  });
+
+  if (managedStatusFilter) {
+    list = list.filter((a) => a.managed_status === managedStatusFilter);
+  }
   if (statusFilter) {
     list = list.filter((a) => a.status === statusFilter);
   }
@@ -20,10 +53,69 @@ export const getAlarmsList = (req: Request, res: Response): void => {
   if (floorFilter) {
     list = list.filter((a) => a.floor_number === floorFilter);
   }
+  if (buildingFilter) {
+    list = list.filter((a) => a.building_id === buildingFilter);
+  }
+
+  const newAlarmsCount = dbStore.alarmEvents.filter(
+    (a) => (a.managed_status || (a.status === 'active' ? 'new_alarm' : '')) === 'new_alarm'
+  ).length;
+
+  const seenAlarmsCount = dbStore.alarmEvents.filter(
+    (a) => (a.managed_status || (a.status === 'acknowledged' ? 'seen_alarm' : '')) === 'seen_alarm'
+  ).length;
+
+  const managedAlarmsCount = dbStore.alarmEvents.filter(
+    (a) => (a.managed_status || (a.status === 'resolved' ? 'managed_alarm' : '')) === 'managed_alarm'
+  ).length;
 
   res.json({
     alarms: list,
-    active_count: dbStore.alarmEvents.filter((a) => a.status === 'active').length
+    active_count: dbStore.alarmEvents.filter((a) => a.status === 'active').length,
+    counts: {
+      new_alarm: newAlarmsCount,
+      seen_alarm: seenAlarmsCount,
+      managed_alarm: managedAlarmsCount,
+      total: dbStore.alarmEvents.length
+    }
+  });
+};
+
+export const updateAlarmStatusHandler = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  const alarmId = Number(req.params.id);
+  const userId = req.user?.id || 1;
+  const { status, resolution_outcome, comment } = req.body as {
+    status: AlarmManagedStatus;
+    resolution_outcome?: string;
+    comment?: string;
+  };
+
+  if (!status || !['new_alarm', 'seen_alarm', 'managed_alarm'].includes(status)) {
+    res.status(400).json({
+      error: "Yaroqsiz status! Mumkin bo'lgan holatlar: 'new_alarm', 'seen_alarm', 'managed_alarm'"
+    });
+    return;
+  }
+
+  const updated = await emergencyService.updateAlarmStatus({
+    alarmId,
+    newStatus: status,
+    userId,
+    resolutionOutcome: resolution_outcome,
+    comment
+  });
+
+  if (!updated) {
+    res.status(404).json({ error: 'Alarm hodisasi topilmadi' });
+    return;
+  }
+
+  res.json({
+    message: `Alarm statusi muvaffaqiyatli yangilandi: ${status}`,
+    alarm: updated
   });
 };
 
