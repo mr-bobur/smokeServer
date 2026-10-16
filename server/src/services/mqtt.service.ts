@@ -99,7 +99,7 @@ class MqttService {
       if (isMysqlConnected && mysqlPool) {
         mysqlPool
           .query(
-            `UPDATE central_gateways SET status = 'online', last_seen = NOW(), rssi_dbm = ?, sim_operator = ?, firmware_version = ? WHERE id = ?`,
+            `UPDATE gateways SET status = 'online', last_seen = NOW(), rssi_dbm = ?, sim_operator = ?, firmware_version = ? WHERE id = ?`,
             [rssiDbm, simOperator, modem, gw.id]
           )
           .catch(() => {});
@@ -631,7 +631,7 @@ class MqttService {
           if (isMysqlConnected && mysqlPool) {
             try {
               await mysqlPool.query(
-                `UPDATE central_gateways SET status = 'offline' WHERE id = ?`,
+                `UPDATE gateways SET status = 'offline' WHERE id = ?`,
                 [gw.id]
               );
             } catch (err) {
