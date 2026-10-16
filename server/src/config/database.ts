@@ -732,7 +732,64 @@ class DigitalTwinDatabase {
       created_at: nowIso
     };
 
-    this.sensors = [realSmokeSensor];
+    const apt12Room = this.rooms.find((r) => r.room_number === 'Apt 12') || this.rooms[1] || this.rooms[0];
+
+    const realSmokeSensor2: SensorEndpointRecord = {
+      id: 2,
+      building_id: 1,
+      room_id: apt12Room ? apt12Room.id : 2,
+      room_number: apt12Room ? apt12Room.room_number : 'Apt 12',
+      floor_id: floor1 ? floor1.id : 1,
+      floor_number: 1,
+      chip_id: 'C3-F4049EC13DE8',
+      profile_code: 'PROFILE_SMOKE_MQ2',
+      sensor_type: 'SMOKE_MQ2',
+      intro_packet_hex: 'AA FF F4 04 9E C1 01 64 C4 9B 55',
+      intro_type_byte: '0x01',
+      parent_link_type: 'CENTRAL_GATEWAY',
+      parent_node_id: 'GW-LILYGO-TCALL-SIM800',
+      status: 'online',
+      coord_x: 68,
+      coord_y: 22,
+      battery_level: 98,
+      beacon_interval_seconds: 5,
+      smoke_threshold_ppm: 400,
+      temp_threshold_c: 60,
+      arm_perimeter: false,
+      primary_value: 18.0,
+      primary_unit: 'PPM',
+      smoke_ppm: 18.0,
+      co_ppm: 3.9,
+      temperature: 24.1,
+      reed_switch_open: false,
+      glass_break_detected: false,
+      rssi_dbm: -53,
+      attributes: buildDeviceAttributesBundle({
+        chip_id: 'C3-F4049EC13DE8',
+        intro_packet_hex: 'AA FF F4 04 9E C1 01 64 C4 9B 55',
+        intro_type_byte: '0x01',
+        rssi_dbm: -53,
+        parent_node_id: 'GW-LILYGO-TCALL-SIM800',
+        beacon_interval_seconds: 5,
+        smoke_threshold_ppm: 400,
+        temp_threshold_c: 60,
+        arm_perimeter: false,
+        building_id: 1,
+        floor_id: floor1 ? floor1.id : 1,
+        room_id: apt12Room ? apt12Room.id : 2,
+        coord_x: 68,
+        coord_y: 22,
+        claimed_by_user_id: null,
+        claimed_at: null,
+        nowIso
+      }),
+      claimed_by_user_id: null,
+      claimed_at: null,
+      last_seen: nowIso,
+      created_at: nowIso
+    };
+
+    this.sensors = [realSmokeSensor, realSmokeSensor2];
 
     // Real-only mode: Start with no fake alarms
     this.alarmEvents = [];
