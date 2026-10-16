@@ -192,14 +192,97 @@ void soundAlarmSirenPattern() {
 }
 
 /**
+ * Active Alarm Mode:
+ * Enters a continuous alarm alert loop when smoke is detected (Raw <= 3800).
+ * Prevents Deep Sleep entirely while smoke is present.
+ * The piezo siren sounds continuously (Temporal-3 cadence) and LED strobes.
+ * Periodically re-samples optical sensor and re-broadcasts 3x ALARM bursts every 60 seconds.
+ * Exits immediately and returns to Normal Deep Sleep only when Raw > 3800 (Clean).
+ */
+void handleActiveAlarmMode(int initialRaw, float initialDrop, float initialPpm, uint8_t batteryPct) {
+    rtcInAlarmState = true;
+    rtcAlarmCycleCount = 0;
+
+    Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    Serial.println("  >>> [CRITICAL ALARM ACTIVATED] SMOKE DETECTED! <<<");
+    Serial.printf("  Initial Raw: %d | Drop: %.0f | Smoke: %.1f PPM | Threshold: <= %d\n",
+                  initialRaw, initialDrop, initialPpm, RAW_SMOKE_THRESHOLD);
+    Serial.println("  Transmitting initial 3x ALARM burst to Gateway...");
+    Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+    // 1. Send initial emergency burst (3x consecutive frames)
+    sendPacketBurst(0x01, batteryPct, (uint16_t)initialPpm, 3);
+
+    unsigned long lastAlarmBurstTime = millis();
+    uint32_t alarmCycleIndex = 0;
+
+    // 2. Active Continuous Siren Loop (NO DEEP SLEEP WHILE SMOKE IS PRESENT)
+    while (true) {
+        alarmCycleIndex++;
+
+        // A. Sound standard emergency siren cadence (Temporal-3: 3x 150ms tones + 100ms pauses)
+        soundAlarmSirenPattern();
+
+        // B. Re-sample optical smoke chamber
+        int currentRaw = 0;
+        float currentDrop = 0.0f;
+        float currentPpm = readOpticalSmoke(currentRaw, currentDrop);
+
+        Serial.printf("[ALARM SIREN #%d] Raw: %4d | Drop: %4.0f | PPM: %5.1f | Status: %s\n",
+                      alarmCycleIndex, currentRaw, currentDrop, currentPpm,
+                      (currentRaw <= RAW_SMOKE_THRESHOLD ? "SMOKE ACTIVE (SIREN ON)" : "SMOKE CLEARED"));
+
+        // C. Check recovery condition: Has smoke cleared? (Raw > 3800)
+        // Confirm with a second verification sample after a short pause to eliminate noise spikes
+        if (currentRaw > RAW_SMOKE_THRESHOLD) {
+            delay(100);
+            int verifyRaw = 0;
+            float verifyDrop = 0.0f;
+            float verifyPpm = readOpticalSmoke(verifyRaw, verifyDrop);
+            if (verifyRaw > RAW_SMOKE_THRESHOLD) {
+                Serial.println("\n======================================================================");
+                Serial.printf("  >>> [RECOVERY CONFIRMED] Smoke cleared! Raw: %d > %d <<<\n",
+                              verifyRaw, RAW_SMOKE_THRESHOLD);
+                Serial.println("  Silencing siren and transmitting 3x NORMAL recovery burst to Gateway...");
+                Serial.println("======================================================================");
+
+                // Stop siren and LED immediately
+                soundBuzzer(false);
+                digitalWrite(PIN_STATUS_LED, LOW);
+
+                // Transmit 3x NORMAL recovery burst (Smoke: 0 PPM)
+                sendPacketBurst(0x01, batteryPct, 0, 3);
+
+                // Confirm with 3 visual LED blinks
+                flashStatusLed(3, 100);
+
+                // Reset alarm state
+                rtcInAlarmState = false;
+                rtcAlarmCycleCount = 0;
+                break; // Exit alarm loop -> allows deep sleep to resume!
+            }
+        }
+
+        // D. Every 60 seconds (1 minute), re-transmit 3x ALARM burst to ensure Gateway / Web Dashboard sync
+        if (millis() - lastAlarmBurstTime >= 60000UL) {
+            lastAlarmBurstTime = millis();
+            Serial.println(">>> [ALARM 60s RE-NOTIFY] Smoke still present! Re-transmitting 3x ALARM burst to Gateway! <<<");
+            sendPacketBurst(0x01, batteryPct, (uint16_t)currentPpm, 3);
+        }
+
+        // E. Brief 250ms cadence pause between siren bursts (Temporal-3 envelope)
+        delay(250);
+    }
+}
+
+/**
  * Core Execution Logic (Shared across Deep Sleep and Continuous Loop)
  */
 void runFullSmokeCycle() {
     rtcWakeupCount++;
 
     Serial.println("\n======================================================================");
-    Serial.printf("  SMART SMOKE ENDPOINT [CYCLE #%d] | State: %s\n",
-                  rtcWakeupCount, (rtcInAlarmState ? "ALARM ACTIVE" : "NORMAL"));
+    Serial.printf("  SMART SMOKE ENDPOINT [CYCLE #%d] | Standby Wakeup\n", rtcWakeupCount);
     Serial.println("======================================================================");
 
     // 1. Measure Optical Smoke Sensor
@@ -215,59 +298,24 @@ void runFullSmokeCycle() {
                   rawAdc, drop, smokePpm, RAW_SMOKE_THRESHOLD,
                   (isSmokePresent ? "SMOKE CRITICAL (<= 3800)" : "CLEAN NORMAL (> 3800)"));
 
-    // 2. State Machine & Transmission Logic
+    // 2. State Machine & Execution Logic
     if (isSmokePresent) {
-        // --- SMOKE DETECTED ---
-        if (!rtcInAlarmState) {
-            // New alarm detected
-            rtcInAlarmState = true;
-            rtcAlarmCycleCount = 0;
-
-            Serial.println(">>> [ALARM NEW] Smoke detected (Raw <= 3800)! Transmitting 3x ALARM burst to Gateway! <<<");
-            sendPacketBurst(0x01, batteryPct, (uint16_t)smokePpm, 3);
-            soundAlarmSirenPattern();
-        } else {
-            // Ongoing alarm
-            rtcAlarmCycleCount++;
-            Serial.printf(">>> [ALARM ONGOING] Cycle %d/%d in 1-minute window. <<<\n",
-                          rtcAlarmCycleCount, ALARM_REPEAT_CYCLES);
-
-            soundAlarmSirenPattern();
-
-            // Check if 1 minute has elapsed (12 cycles * 5s = 60s)
-            if (rtcAlarmCycleCount >= ALARM_REPEAT_CYCLES) {
-                rtcAlarmCycleCount = 0; // Reset 1-minute window
-                Serial.println(">>> [ALARM 1-MIN RE-NOTIFY] 1 minute elapsed, smoke still present! Transmitting 3x ALARM burst! <<<");
-                sendPacketBurst(0x01, batteryPct, (uint16_t)smokePpm, 3);
-            }
-        }
+        // Enters active alarm loop: stays awake, sounds buzzer continuously until smoke clears (Raw > 3800)
+        handleActiveAlarmMode(rawAdc, drop, smokePpm, batteryPct);
     } else {
         // --- CLEAN / NO SMOKE ---
-        if (rtcInAlarmState) {
-            // Smoke has cleared! Transition from Alarm -> Normal
-            rtcInAlarmState = false;
-            rtcAlarmCycleCount = 0;
+        rtcInAlarmState = false;
+        flashStatusLed(1, 30); // 30ms gentle heartbeat blink
 
-            soundBuzzer(false);
-            digitalWrite(PIN_STATUS_LED, LOW);
-
-            Serial.println(">>> [RECOVERY] Smoke cleared (Raw > 3800)! Transmitting 3x NORMAL recovery burst to Gateway! <<<");
-            sendPacketBurst(0x01, batteryPct, (uint16_t)smokePpm, 3);
-            flashStatusLed(3, 100);
-        } else {
-            // Standard Normal Standby
-            rtcNormalHeartbeatCount++;
-            flashStatusLed(1, 30); // 30ms gentle heartbeat blink
-
-            // Send keep-alive telemetry beacon every 6 cycles (30s)
-            if (rtcNormalHeartbeatCount >= 6) {
-                rtcNormalHeartbeatCount = 0;
-                broadcastTelemetryFrame(0x01, batteryPct, (uint16_t)smokePpm);
-            }
+        // Send keep-alive telemetry beacon every 6 cycles (30s)
+        rtcNormalHeartbeatCount++;
+        if (rtcNormalHeartbeatCount >= 6) {
+            rtcNormalHeartbeatCount = 0;
+            broadcastTelemetryFrame(0x01, batteryPct, (uint16_t)smokePpm);
         }
     }
 
-    // Ensure buzzer is completely off and silent during wait interval
+    // Ensure buzzer is completely off and silent during sleep interval
     soundBuzzer(false);
 }
 
