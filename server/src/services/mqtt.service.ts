@@ -47,6 +47,8 @@ class MqttService {
 
       if (topic.includes('/gateway/') && topic.endsWith('/status')) {
         await this.ingestGatewayStatusPayload(parsed, topic);
+      } else if (topic.endsWith('/pairing')) {
+        await this.ingestPairingPayload(parsed, topic);
       } else if (topic.endsWith('/telemetry')) {
         await this.ingestTelemetryPayload(parsed, topic);
       } else if (topic.endsWith('/alarm')) {
@@ -115,6 +117,45 @@ class MqttService {
 
     socketService.emitGlobal('GATEWAY_UPDATE', { gateway: gw });
     socketService.emitGlobal('INVENTORY_UPDATE', { action: 'GATEWAY_HEARTBEAT', gateway: gw });
+  }
+
+  public async ingestPairingPayload(payload: any, topic: string): Promise<void> {
+    const chipId = payload.chip_id;
+    if (!chipId) return;
+
+    console.log(`[MQTT Pairing] Ingesting Pairing Intro Packet from Gateway for ${chipId}`);
+
+    const session = dbStore.pairingSessions.find((s) => s.status === 'listening');
+    let sensor = dbStore.sensors.find((s) => s.chip_id === chipId);
+
+    if (!sensor) {
+      sensor = this.autoProvisionSensor({
+        chip_id: chipId,
+        sensor_type: payload.sensor_type || 'TEMP_DS18B20',
+        temperature: payload.temperature ?? payload.primary_value ?? 24.5,
+        battery_level: payload.battery_pct ?? 98,
+        rssi: payload.rssi ?? -50,
+        status: 'online',
+        gateway_id: payload.gateway_id
+      }, topic);
+    }
+
+    if (session) {
+      session.status = 'completed';
+      socketService.emitGlobal('PAIRING_MODE_COMPLETED', {
+        session,
+        chip_id: chipId,
+        sensor_type: sensor.sensor_type
+      });
+    }
+
+    socketService.emitGlobal('SENSOR_PAIRED', {
+      sensor,
+      ble_packet: payload.raw_intro_packet_hex || '',
+      detected_sensor_type: sensor.sensor_type,
+      parent_link_type: 'CENTRAL_GATEWAY',
+      parent_node_id: payload.gateway_id || 'GW-LILYGO-TCALL-SIM800'
+    });
   }
 
   private autoProvisionSensor(payload: any, topic?: string): SensorEndpointRecord {

@@ -506,8 +506,9 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
     floor_id?: number;
     floor_number?: number;
     room_id?: number;
-    coord_x: number;
-    coord_y: number;
+    coord_x?: number;
+    coord_y?: number;
+    target_receiver_type?: 'FLOOR_HUB' | 'CENTRAL_GATEWAY';
   }) => {
     const res = await fetch(`${API_BASE}/api/devices/pairing/start`, {
       method: 'POST',
@@ -517,16 +518,37 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
         floor_id: params.floor_id || currentFloor?.id,
         floor_number: params.floor_number || selectedFloor,
         room_id: params.room_id,
-        coord_x: params.coord_x,
-        coord_y: params.coord_y
+        coord_x: params.coord_x ?? 50,
+        coord_y: params.coord_y ?? 50,
+        target_receiver_type: params.target_receiver_type
       })
     });
     if (res.ok) {
       const data = await res.json();
       setActivePairingSession(data.session);
+      await fetchBuildingOverview(selectedBuildingId);
+      await fetchFloorDetails(selectedFloor, selectedBuildingId);
       return data.session as PairingSessionData;
     }
     return null;
+  };
+
+  const cancelPairingSession = async () => {
+    setActivePairingSession(null);
+    try {
+      await fetch(`${API_BASE}/api/devices/pairing/cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders(role),
+        body: JSON.stringify({
+          building_id: selectedBuildingId,
+          floor_id: currentFloor?.id
+        })
+      });
+      await fetchBuildingOverview(selectedBuildingId);
+      await fetchFloorDetails(selectedFloor, selectedBuildingId);
+    } catch {
+      // Non-blocking
+    }
   };
 
   const completePairingWithIntroPacket = async (params: {
@@ -784,6 +806,7 @@ export const useFloorData = (initialFloor = 4, role: UserRole = 'super_admin') =
     updateEndpointDevice,
     deleteEndpointDevice,
     startDragDropPairing,
+    cancelPairingSession,
     completePairingWithIntroPacket,
     saveSensorCoordinates,
     updateSensorConfig,

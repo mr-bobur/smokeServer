@@ -62,6 +62,7 @@ import {
   assignBuildingTenant,
   completePairingViaIntroPacket,
   createBuilding,
+  cancelDevicePairingSession,
   createNewUserAccount,
   deleteApartment,
   deleteBuilding,
@@ -245,6 +246,12 @@ app.post(
   authenticateJWT,
   authorizeRoles('super_admin', 'tenant', 'user'),
   completePairingViaIntroPacket
+);
+app.post(
+  '/api/devices/pairing/cancel',
+  authenticateJWT,
+  authorizeRoles('super_admin', 'tenant', 'user'),
+  cancelDevicePairingSession
 );
 
 // 4. Floors & RS485 Trunk Diagnostics Routes

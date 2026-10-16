@@ -16,6 +16,9 @@ static uint32_t lastHeartbeatMs = 0;
 static uint32_t lastMqttRetryMs = 0;
 static uint32_t lastGprsRetryMs = 0;
 
+static uint32_t g_pairingModeUntilMs = 0;
+static bool g_isPairingModeActive = false;
+
 void mqttMessageCallback(char* topic, byte* payload, unsigned int length) {
     char message[256];
     size_t copyLen = (length < sizeof(message) - 1) ? length : sizeof(message) - 1;
@@ -28,7 +31,14 @@ void mqttMessageCallback(char* topic, byte* payload, unsigned int length) {
     DeserializationError err = deserializeJson(doc, message);
     if (!err) {
         const char* cmd = doc["command"];
-        if (cmd != nullptr) {
+        const char* method = doc["method"];
+        if ((cmd && strcmp(cmd, "ENABLE_PAIRING_MODE") == 0) ||
+            (method && strcmp(method, "ENABLE_PAIRING_MODE") == 0)) {
+            uint32_t windowSec = doc["window_sec"] | 60;
+            g_pairingModeUntilMs = millis() + (windowSec * 1000UL);
+            g_isPairingModeActive = true;
+            Serial.printf("\n[Gateway Pairing] >>> PAIRING MODE ENABLED for %u seconds! Listening for BLE Intro packets... <<<\n\n", windowSec);
+        } else if (cmd != nullptr) {
             Serial.printf("[MQTT RPC] Processing Command: %s\n", cmd);
         }
     }
@@ -219,6 +229,30 @@ bool publishTelemetryToMqtt(const SensorTelemetry& data) {
 
     bool pubOk = mqttClient.publish(topic, (const uint8_t*)buffer, len, false);
     Serial.printf("[MQTT Pub] Topic: %s -> Result: %s\n", topic, pubOk ? "OK" : "FAILED");
+
+    // If initial intro handshake packet or gateway in active pairing mode, publish to pairing topic
+    bool inPairingWindow = (g_isPairingModeActive && millis() < g_pairingModeUntilMs);
+    if (data.isIntroPacket || inPairingWindow) {
+        JsonDocument pairDoc;
+        pairDoc["gateway_id"] = GATEWAY_ID;
+        pairDoc["chip_id"] = data.chipId;
+        pairDoc["sensor_type"] = data.sensorType;
+        pairDoc["intro_type_byte"] = (strcmp(data.sensorType, "TEMP_DS18B20") == 0) ? "0x02" : "0x01";
+        pairDoc["raw_intro_packet_hex"] = strlen(data.rawIntroHex) > 0 ? data.rawIntroHex : "";
+        pairDoc["battery_pct"] = data.batteryLevel;
+        pairDoc["primary_value"] = data.primaryValue;
+        pairDoc["temperature"] = data.temperature;
+        pairDoc["smoke_ppm"] = data.smokePpm;
+        pairDoc["rssi"] = data.rssi;
+        pairDoc["status"] = "pairing";
+        pairDoc["timestamp"] = data.timestamp;
+
+        char pairBuf[384];
+        size_t pLen = serializeJson(pairDoc, pairBuf);
+        mqttClient.publish(TOPIC_GATEWAY_PAIRING, (const uint8_t*)pairBuf, pLen, false);
+        Serial.printf("[Gateway Pairing] >>> Forwarded Intro Pairing Packet for %s to %s <<<\n",
+                      data.chipId, TOPIC_GATEWAY_PAIRING);
+    }
 
     // If critical alarm, publish immediately to dedicated emergency alarm topic
     if (data.isAlarm) {

@@ -29,6 +29,7 @@
 #define TOPIC_TELEMETRY_PREFIX      "smartbuilding"
 #define TOPIC_GATEWAY_STATUS        "smartbuilding/gateway/GW-LILYGO-TCALL-SIM800/status"
 #define TOPIC_GATEWAY_CMD           "smartbuilding/gateway/GW-LILYGO-TCALL-SIM800/command"
+#define TOPIC_GATEWAY_PAIRING       "smartbuilding/gateway/GW-LILYGO-TCALL-SIM800/pairing"
 
 // FreeRTOS Buffer Limits
 #define MAX_QUEUED_TELEMETRY        32

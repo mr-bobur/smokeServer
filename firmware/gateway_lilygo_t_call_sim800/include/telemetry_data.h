@@ -19,4 +19,6 @@ struct SensorTelemetry {
     int rssi;                  // Signal strength (dBm)
     bool isAlarm;              // True if critical alarm
     uint32_t timestamp;        // Millis
+    bool isIntroPacket;        // True if initial handshake / intro pairing packet
+    char rawIntroHex[48];      // Raw packet hex string e.g. "AA FF ..."
 };

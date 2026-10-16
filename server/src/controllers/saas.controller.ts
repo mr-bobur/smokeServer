@@ -6,6 +6,7 @@ import {
   buildDeviceAttributesBundle
 } from '../config/database';
 import { socketService } from '../services/socket.service';
+import { mqttClient, isMqttBrokerConnected } from '../config/mqtt';
 import {
   AuthenticatedRequest,
   BuildingRecord,
@@ -587,16 +588,25 @@ export const registerOrUpdateFloorHub = (req: Request, res: Response): void => {
 // 3. DRAG-AND-DROP PAIRING MODE, DEVICE CLAIMING & INTRO PACKET AUTO-DETECTION
 // ============================================================================
 export const startDevicePairingSession = (req: AuthenticatedRequest, res: Response): void => {
-  const { building_id, floor_id, floor_number, room_id, apartment_id, coord_x, coord_y } =
-    req.body as {
-      building_id?: number;
-      floor_id?: number;
-      floor_number?: number;
-      room_id?: number;
-      apartment_id?: number;
-      coord_x: number;
-      coord_y: number;
-    };
+  const {
+    building_id,
+    floor_id,
+    floor_number,
+    room_id,
+    apartment_id,
+    coord_x,
+    coord_y,
+    target_receiver_type
+  } = req.body as {
+    building_id?: number;
+    floor_id?: number;
+    floor_number?: number;
+    room_id?: number;
+    apartment_id?: number;
+    coord_x: number;
+    coord_y: number;
+    target_receiver_type?: 'FLOOR_HUB' | 'CENTRAL_GATEWAY';
+  };
 
   const bldId = Number(building_id || 1);
   const floor =
@@ -616,7 +626,11 @@ export const startDevicePairingSession = (req: AuthenticatedRequest, res: Respon
     dbStore.gateways.find((g) => g.building_id === floor.building_id) || dbStore.gateways[0];
 
   const useFloorHub =
-    floor.has_sub_hub && floor.hub_status !== 'none' && floor.hub_status !== 'offline';
+    target_receiver_type === 'FLOOR_HUB'
+      ? true
+      : target_receiver_type === 'CENTRAL_GATEWAY'
+        ? false
+        : floor.has_sub_hub && floor.hub_status !== 'none' && floor.hub_status !== 'offline';
 
   if (useFloorHub) {
     floor.pairing_mode_active = true;
@@ -663,6 +677,25 @@ export const startDevicePairingSession = (req: AuthenticatedRequest, res: Respon
     initiated_by_user_id: req.user?.id || 3,
     immediateAck: true
   });
+
+  // Publish direct MQTT command to Gateway so it enters BLE listening mode immediately
+  if (isMqttBrokerConnected && mqttClient) {
+    const gwCmdTopic = `smartbuilding/gateway/${session.target_receiver_id}/command`;
+    mqttClient.publish(
+      gwCmdTopic,
+      JSON.stringify({
+        command: 'ENABLE_PAIRING_MODE',
+        method: 'ENABLE_PAIRING_MODE',
+        session_id: session.session_id,
+        claim_secret: claimSecret,
+        window_sec: 60,
+        room_number: room.room_number,
+        timestamp: Date.now()
+      }),
+      { qos: 1 }
+    );
+    console.log(`[MQTT Pairing] Dispatched ENABLE_PAIRING_MODE to ${gwCmdTopic}`);
+  }
 
   socketService.emitGlobal('PAIRING_MODE_STARTED', {
     session,
@@ -861,6 +894,47 @@ export const completePairingViaIntroPacket = (req: AuthenticatedRequest, res: Re
     device_profile: matchedProfile,
     sensor: newSensor
   });
+};
+
+export const cancelDevicePairingSession = (req: AuthenticatedRequest, res: Response): void => {
+  const { session_id, floor_id, building_id } = req.body as {
+    session_id?: string;
+    floor_id?: number;
+    building_id?: number;
+  };
+
+  const session = session_id
+    ? dbStore.pairingSessions.find((s) => s.session_id === session_id)
+    : dbStore.pairingSessions.find((s) => s.status === 'listening');
+
+  if (session) {
+    session.status = 'expired';
+  }
+
+  for (const fl of dbStore.floors) {
+    if (!floor_id || fl.id === Number(floor_id)) {
+      fl.pairing_mode_active = false;
+      if (fl.hub_status === 'pairing_mode') {
+        fl.hub_status = fl.has_sub_hub ? 'online' : 'none';
+      }
+    }
+  }
+
+  for (const gw of dbStore.gateways) {
+    if (!building_id || gw.building_id === Number(building_id)) {
+      gw.pairing_mode_active = false;
+      if (gw.status === 'pairing_mode') {
+        gw.status = 'online';
+      }
+    }
+  }
+
+  socketService.emitGlobal('PAIRING_MODE_CANCELLED', {
+    session_id: session?.session_id,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({ message: 'Pairing mode cancelled successfully' });
 };
 
 // ============================================================================

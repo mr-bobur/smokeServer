@@ -16,9 +16,25 @@ class SmartBuildingAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbac
             const uint8_t* raw = (const uint8_t*)mfgData.c_str();
             size_t len = mfgData.length();
 
-            // Expected packet: [0xFF, 0xFF, CHIP_ID (6B), TYPE_BYTE (1B), BATTERY_PCT (1B), VALUE_HIGH (1B), VALUE_LOW (1B)]
-            if (len >= 8 && raw[0] == 0xFF && raw[1] == 0xFF) {
+            // Expected packet:
+            // Standard Telemetry: [0xFF, 0xFF, CHIP_ID (6B), TYPE_BYTE (1B), BATTERY_PCT (1B), VALUE_HIGH (1B), VALUE_LOW (1B), ...]
+            // Intro Handshake  : [0xAA, 0xFF, CHIP_ID (6B), TYPE_BYTE (1B), BATTERY_PCT (1B), VALUE_HIGH (1B), VALUE_LOW (1B), ..., 0x55]
+            bool isTelemetry = (len >= 8 && raw[0] == 0xFF && raw[1] == 0xFF);
+            bool isIntro = (len >= 8 && raw[0] == 0xAA && raw[1] == 0xFF);
+
+            if (isTelemetry || isIntro) {
                 SensorTelemetry item = {};
+                item.isIntroPacket = isIntro;
+
+                // Format hex string for intro packet
+                if (isIntro) {
+                    char hexBuf[48] = {0};
+                    int p = 0;
+                    for (size_t i = 0; i < len && i < 16; i++) {
+                        p += snprintf(hexBuf + p, sizeof(hexBuf) - p, "%02X ", raw[i]);
+                    }
+                    strncpy(item.rawIntroHex, hexBuf, sizeof(item.rawIntroHex));
+                }
 
                 // Extract Chip ID (e.g. C3-B1F1DAA66D)
                 snprintf(item.chipId, sizeof(item.chipId), "C3-%02X%02X%02X%02X%02X%02X",
