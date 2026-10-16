@@ -43,12 +43,45 @@
 // Set to false for Continuous Loop (keeps USB Serial Monitor open without disconnects)
 #define USE_DEEP_SLEEP                true
 
-// Hardware Pin Configuration
-#define PIN_SMOKE_ADC                 3   // D1 (GPIO 3) - Smoke Receiver (AO)
-#define PIN_IR_LED                    4   // D2 (GPIO 4) - Chamber IR Emitter LED
-#define PIN_ALARM_BUZZER              5   // D3 (GPIO 5) - Piezo Alarm Siren
-#define PIN_STATUS_LED                6   // D4 (GPIO 6) - Status LED Indicator
-#define PIN_BOOT_BTN                  9   // GPIO 9 - Onboard BOOT Button
+// ============================================================================
+// HARDWARE BOARD SELECTION & PIN CONFIGURATION
+// ============================================================================
+#if defined(BOARD_ESP32C3_MICRO)
+  // --------------------------------------------------------------------------
+  // Board: ESP32-C3 SuperMini / Micro (Direct Silkscreen Number Mapping)
+  // Connect wires directly to the numbers printed on the SuperMini PCB:
+  //   Pin 1 (GPIO 1 / ADC1_CH1) -> Optical Smoke Sensor (AO)
+  //   Pin 2 (GPIO 2)            -> Chamber IR Emitter LED
+  //   Pin 3 (GPIO 3)            -> Piezo Alarm Buzzer Siren
+  //   Pin 4 (GPIO 4)            -> External Status LED
+  //   Pin 8 (GPIO 8)            -> Onboard Blue Status LED (Active-LOW)
+  //   Pin 9 (GPIO 9)            -> BOOT Button
+  // --------------------------------------------------------------------------
+  #define BOARD_PROFILE_NAME            "ESP32-C3 SuperMini / Micro"
+  #define PIN_SMOKE_ADC                 1   // PCB Pin '1' (GPIO 1 / ADC1_CH1) - Smoke Receiver (AO)
+  #define PIN_IR_LED                    2   // PCB Pin '2' (GPIO 2)            - Chamber IR Emitter LED
+  #define PIN_ALARM_BUZZER              3   // PCB Pin '3' (GPIO 3)            - Piezo Alarm Siren
+  #define PIN_STATUS_LED                4   // PCB Pin '4' (GPIO 4)            - External Status LED
+  #define PIN_ONBOARD_LED               8   // PCB Pin '8' (GPIO 8)            - Onboard Blue LED (Active-LOW)
+  #define PIN_BOOT_BTN                  9   // PCB Pin '9' (GPIO 9)            - Onboard BOOT Button
+#else
+  // --------------------------------------------------------------------------
+  // Board: Seeed Studio XIAO ESP32-C3 (Default)
+  // Silkscreen Label Mapping:
+  //   D1 (GPIO 3 / ADC1_CH3)    -> Optical Smoke Sensor (AO)
+  //   D2 (GPIO 4)               -> Chamber IR Emitter LED
+  //   D3 (GPIO 5)               -> Piezo Alarm Buzzer Siren
+  //   D4 (GPIO 6)               -> External Status LED
+  //   D9 (GPIO 9)               -> BOOT Button
+  // --------------------------------------------------------------------------
+  #define BOARD_PROFILE_NAME            "Seeed Studio XIAO ESP32-C3"
+  #define PIN_SMOKE_ADC                 3   // D1 (GPIO 3 / ADC1_CH3) - Smoke Receiver (AO)
+  #define PIN_IR_LED                    4   // D2 (GPIO 4)            - Chamber IR Emitter LED
+  #define PIN_ALARM_BUZZER              5   // D3 (GPIO 5)            - Piezo Alarm Siren
+  #define PIN_STATUS_LED                6   // D4 (GPIO 6)            - External Status LED
+  #define PIN_ONBOARD_LED               -1  // No user LED on XIAO
+  #define PIN_BOOT_BTN                  9   // GPIO 9                 - Onboard BOOT Button
+#endif
 
 // Smoke Detection Parameters
 #define RAW_CLEAN_BASELINE            4095
@@ -85,12 +118,18 @@ void soundBuzzer(bool enable, int freq = 2700) {
     }
 }
 
-// Flash status LED on D4
+// Flash status LED (supports external LED and onboard blue LED on SuperMini)
 void flashStatusLed(int count, int delayMs = 60) {
     for (int i = 0; i < count; i++) {
         digitalWrite(PIN_STATUS_LED, HIGH);
+#if defined(BOARD_ESP32C3_MICRO)
+        digitalWrite(PIN_ONBOARD_LED, LOW); // Onboard blue LED on SuperMini is active-low
+#endif
         delay(delayMs);
         digitalWrite(PIN_STATUS_LED, LOW);
+#if defined(BOARD_ESP32C3_MICRO)
+        digitalWrite(PIN_ONBOARD_LED, HIGH);
+#endif
         if (i < count - 1) delay(delayMs);
     }
 }
@@ -183,10 +222,16 @@ void soundAlarmSirenPattern() {
     // Standard ISO/NFPA Temporal-3 emergency siren burst
     for (int i = 0; i < 3; i++) {
         digitalWrite(PIN_STATUS_LED, HIGH);
+#if defined(BOARD_ESP32C3_MICRO)
+        digitalWrite(PIN_ONBOARD_LED, LOW); // Onboard blue LED is active-low
+#endif
         soundBuzzer(true, 2800);
         delay(150);
         soundBuzzer(false);
         digitalWrite(PIN_STATUS_LED, LOW);
+#if defined(BOARD_ESP32C3_MICRO)
+        digitalWrite(PIN_ONBOARD_LED, HIGH);
+#endif
         delay(100);
     }
 }
@@ -344,6 +389,11 @@ void setup() {
     pinMode(PIN_STATUS_LED, OUTPUT);
     digitalWrite(PIN_STATUS_LED, LOW);
 
+#if defined(BOARD_ESP32C3_MICRO)
+    pinMode(PIN_ONBOARD_LED, OUTPUT);
+    digitalWrite(PIN_ONBOARD_LED, HIGH); // Turn off active-low blue onboard LED
+#endif
+
     pinMode(PIN_BOOT_BTN, INPUT_PULLUP);
 
     analogSetAttenuation(ADC_11db);
@@ -354,6 +404,12 @@ void setup() {
     for (int i = 0; i < 6; i++) {
         chipIdBytes[i] = (mac >> (8 * (5 - i))) & 0xFF;
     }
+
+    Serial.println("\n**********************************************************************");
+    Serial.printf("  SMART SMOKE ENDPOINT INITIALIZED | Board: %s\n", BOARD_PROFILE_NAME);
+    Serial.printf("  Pin Mapping -> Smoke ADC: GPIO %d | IR LED: GPIO %d | Buzzer: GPIO %d | LED: GPIO %d\n",
+                  PIN_SMOKE_ADC, PIN_IR_LED, PIN_ALARM_BUZZER, PIN_STATUS_LED);
+    Serial.println("**********************************************************************");
 
 #if USE_DEEP_SLEEP
     // Run the measurement cycle
