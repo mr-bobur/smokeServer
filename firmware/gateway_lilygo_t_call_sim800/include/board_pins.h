@@ -42,3 +42,22 @@
 
 // Status Indicator LED
 #define LED_PIN                  13
+
+// ============================================================================
+// BUZZER ALARM SIREN (Direct GPIO Connection without Transistor)
+// ============================================================================
+// Wiring: Buzzer (+) to GPIO 19, Buzzer (-) to GND
+// NOTE ON PINS: On LilyGO T-Call ESP32 (WROVER-B), GPIO 6-11 are connected to
+// internal SPI Flash (SD0..SD3, CMD, CLK). Touching GPIO 10 will crash the MCU.
+// GPIO 19 is an open general-purpose pin on the board header.
+#define BUZZER_PIN               19
+
+// ============================================================================
+// RS485 INDUSTRIAL MASTER BUS (MAX485 / SP485 Transceiver)
+// ============================================================================
+// Connects LilyGO T-Call Gateway to external floor MCUs (3 to 20 floors)
+// Hardware UART2 remapped pins:
+#define RS485_RX_PIN             18    // ESP32 RX <- MAX485 RO
+#define RS485_TX_PIN             25    // ESP32 TX -> MAX485 DI
+#define RS485_DE_RE_PIN          14    // MAX485 DE & RE tied together (HIGH=TX, LOW=RX)
+#define RS485_BAUDRATE           115200

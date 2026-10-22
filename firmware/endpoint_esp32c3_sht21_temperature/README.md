@@ -8,11 +8,11 @@ Ushbu mikrodastur **LilyGO T-ZigBee** platasidagi **ESP32-C3** mikrokontrolleri 
 
 | Funksiya / Qurilma | T-ZigBee ESP32-C3 Pin | Tavsif |
 | :--- | :--- | :--- |
-| **User KEY Button** | `GPIO 2` | Platadagi foydalanuvchi tugmasi (Active LOW, internal pull-up) |
+| **SHT21 I2C SDA**   | `GPIO 1` | SHT21 modulining Serial Data (SDA) liniyasi |
+| **SHT21 I2C SCL**   | `GPIO 2` | SHT21 modulining Serial Clock (SCL / CLS) liniyasi |
+| **User KEY Button** | `GPIO 2` / `GPIO 9` | Platadagi KEY (GPIO 2) yoki BOOT (GPIO 9) tugmasi (Active LOW) |
 | **Status LED (Ko'k)**| `GPIO 3` | Platadagi ko'k LED indikator (Active HIGH) |
 | **Zigbee MCU Power** | `GPIO 0` | TLSR8258 Zigbee chipining quvvati (Quvvat tejash uchun doimiy LOW qilingan) |
-| **SHT21 I2C SDA**   | `GPIO 4` | SHT21 modulining Serial Data (SDA) liniyasi |
-| **SHT21 I2C SCL**   | `GPIO 5` | SHT21 modulining Serial Clock (SCL) liniyasi |
 | **SHT21 VCC / GND** | `3.3V` va `GND` | Modulni 3.3V quvvat manbaiga ulash |
 
 ---
@@ -20,7 +20,7 @@ Ushbu mikrodastur **LilyGO T-ZigBee** platasidagi **ESP32-C3** mikrokontrolleri 
 ## 2. 5 Sekundlik KEY Tugmasi va Dastlabki Ulanish (Initial Connection / Pairing) Algoritmi
 
 1. **5 Sekund bosib turish (Long Press Hold):**
-   - Foydalanuvchi platadagi `KEY` (GPIO 2) tugmasini 5 soniya davomida bosib tursa:
+   - Foydalanuvchi platadagi `KEY` (GPIO 2 yoki BOOT GPIO 9) tugmasini 5 soniya davomida bosib tursa:
    - LED 4-sekundda tez-tez miltillab ogohlantiradi.
    - 5-soniya to'lganda NVS (Non-Volatile Storage) dagi `is_paired = false` va `need_pairing_intro = true` holatiga o'tkaziladi.
    - Ko'k LED 10 marta tez miltillab tasdiqlaydi.

@@ -1,8 +1,8 @@
 #include "sht21_sensor.h"
 #include <Wire.h>
 
-static int g_sdaPin = 4;
-static int g_sclPin = 5;
+static int g_sdaPin = 1;
+static int g_sclPin = 2;
 
 uint8_t calculateSht21Crc(const uint8_t *data, size_t len) {
     uint8_t crc = 0x00;

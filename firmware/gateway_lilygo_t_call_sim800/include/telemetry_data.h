@@ -21,4 +21,6 @@ struct SensorTelemetry {
     uint32_t timestamp;        // Millis
     bool isIntroPacket;        // True if initial handshake / intro pairing packet
     char rawIntroHex[48];      // Raw packet hex string e.g. "AA FF ..."
+    uint8_t floorId;           // Floor number (1 to 20)
+    char hubId[24];            // Hub identifier e.g. "HUB-B1-FL03"
 };

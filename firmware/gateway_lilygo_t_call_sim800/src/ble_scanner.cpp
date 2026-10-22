@@ -25,6 +25,8 @@ class SmartBuildingAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbac
             if (isTelemetry || isIntro) {
                 SensorTelemetry item = {};
                 item.isIntroPacket = isIntro;
+                item.floorId = DEFAULT_FLOOR_ID;
+                strncpy(item.hubId, DEFAULT_HUB_ID, sizeof(item.hubId));
 
                 // Format hex string for intro packet
                 if (isIntro) {

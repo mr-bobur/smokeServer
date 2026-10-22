@@ -69,6 +69,13 @@ class MqttService {
     const rssiDbm = csq === 99 ? -113 : -113 + csq * 2;
     const simOperator = payload.operator ? String(payload.operator) : 'Uztelecom GSM / 43408';
     const modem = payload.modem ? String(payload.modem) : 'SIM800L_2G';
+    const batteryLevel = typeof payload.battery_level === 'number'
+      ? payload.battery_level
+      : (typeof payload.battery_pct === 'number' ? payload.battery_pct : 92);
+    const batteryVoltage = typeof payload.battery_voltage_mv === 'number' ? payload.battery_voltage_mv : 4120;
+    const isCharging = typeof payload.is_charging === 'boolean' ? payload.is_charging : false;
+    const rs485ActiveFloors = typeof payload.rs485_active_floors === 'number' ? payload.rs485_active_floors : undefined;
+    const rs485ConfiguredRange = payload.rs485_configured_range ? String(payload.rs485_configured_range) : undefined;
 
     if (!gw) {
       const newId = dbStore.gateways.reduce((max, g) => Math.max(max, g.id), 0) + 1;
@@ -84,17 +91,29 @@ class MqttService {
         rssi_dbm: rssiDbm,
         status: 'online',
         pairing_mode_active: false,
+        battery_level: batteryLevel,
+        battery_pct: batteryLevel,
+        battery_voltage_mv: batteryVoltage,
+        is_charging: isCharging,
+        rs485_active_floors: rs485ActiveFloors,
+        rs485_configured_range: rs485ConfiguredRange,
         last_seen: nowIso,
         created_at: nowIso
       };
       dbStore.gateways.push(gw);
-      console.log(`[MQTT] Gateway ${gatewayId} registered in dbStore.`);
+      console.log(`[MQTT] Gateway ${gatewayId} registered in dbStore with battery ${batteryLevel}%.`);
     } else {
       gw.status = 'online';
       gw.last_seen = nowIso;
       gw.rssi_dbm = rssiDbm;
       gw.sim_operator = simOperator;
       gw.firmware_version = modem;
+      gw.battery_level = batteryLevel;
+      gw.battery_pct = batteryLevel;
+      gw.battery_voltage_mv = batteryVoltage;
+      gw.is_charging = isCharging;
+      if (rs485ActiveFloors !== undefined) gw.rs485_active_floors = rs485ActiveFloors;
+      if (rs485ConfiguredRange) gw.rs485_configured_range = rs485ConfiguredRange;
 
       if (isMysqlConnected && mysqlPool) {
         mysqlPool

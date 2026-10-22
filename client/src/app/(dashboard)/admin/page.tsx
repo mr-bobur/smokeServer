@@ -24,8 +24,13 @@ import {
   Sliders,
   X,
   Search,
-  Filter,
-  ChevronLeft
+  ChevronLeft,
+  Battery,
+  BatteryCharging,
+  RefreshCw,
+  Router,
+  Zap,
+  Filter
 } from 'lucide-react';
 import { API_BASE, getAuthHeaders, useFloorData } from '../../../hooks/useFloorData';
 import { BlueprintViewer } from '../../../components/map/BlueprintViewer';
@@ -112,8 +117,9 @@ export default function SuperAdminDashboardPage() {
 
   // Selected sensor for ThingsBoard 3-Scope Attributes & Telemetry drawer
   const [selectedSensor, setSelectedSensor] = useState<SensorEndpointData | null>(null);
-  const [customAtCmd, setCustomAtCmd] = useState<string>('AT+CSQ');
   const [selectedAtGatewayId, setSelectedAtGatewayId] = useState<string>('GW-LILYGO-TCALL-SIM800');
+  const [isRefreshingGateway, setIsRefreshingGateway] = useState<boolean>(false);
+  const [gwDeviceTab, setGwDeviceTab] = useState<'all' | 'hubs' | 'sensors'>('all');
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
 
   // Endpoints Table Search & Pagination States
@@ -530,20 +536,26 @@ export default function SuperAdminDashboardPage() {
     setUserModalOpen(false);
   };
 
-  const handleSendAtCommand = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customAtCmd.trim()) return;
-    const targetGw = selectedAtGatewayId || 'GW-LILYGO-TCALL-SIM800';
-    const res = await fetch(`${API_BASE}/api/emergency/sim7670/at`, {
-      method: 'POST',
-      headers: getAuthHeaders('super_admin'),
-      body: JSON.stringify({ command: customAtCmd, gateway_id: targetGw })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setSim7670(data.gateway);
-      showNotice(`[${targetGw}] "${customAtCmd}" buyrug'i jo'natildi.`);
-      setCustomAtCmd('');
+  const handleRefreshGatewayMetrics = async (targetGwSerial?: string) => {
+    const gwSerial = targetGwSerial || selectedAtGatewayId || 'GW-LILYGO-TCALL-SIM800';
+    setIsRefreshingGateway(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/devices/gateways/${encodeURIComponent(gwSerial)}/refresh`, {
+        method: 'POST',
+        headers: getAuthHeaders('super_admin')
+      });
+      if (res.ok) {
+        showNotice(`[${gwSerial}] Barcha parametrlar muvaffaqiyatli yangilandi (Batareya, CSQ, RS485).`);
+        await refreshOverview();
+        await refreshFloor();
+      } else {
+        showNotice(`[${gwSerial}] Parametrlarni yangilash buyrug'i yuborildi.`);
+      }
+    } catch (err) {
+      console.error('Refresh gateway failed', err);
+      showNotice(`Xatolik yuz berdi.`);
+    } finally {
+      setIsRefreshingGateway(false);
     }
   };
 
@@ -1277,6 +1289,7 @@ export default function SuperAdminDashboardPage() {
                     <th className="py-3 px-3">ID</th>
                     <th className="py-3 px-3">SERIAL NUMBER</th>
                     <th className="py-3 px-3">BIRIKTIRILGAN BINO</th>
+                    <th className="py-3 px-3">BATAREYA</th>
                     <th className="py-3 px-3">IMEI / MAC</th>
                     <th className="py-3 px-3">4G OPERATOR</th>
                     <th className="py-3 px-3">RSSI</th>
@@ -1292,6 +1305,31 @@ export default function SuperAdminDashboardPage() {
                       <td className="py-3 px-3 font-sans font-semibold text-white">
                         {gw.building_name || 'Biriktirilmagan'}
                       </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1.5">
+                          {gw.is_charging ? (
+                            <BatteryCharging className="w-4 h-4 text-amber-400" />
+                          ) : (
+                            <Battery
+                              className={`w-4 h-4 ${
+                                (gw.battery_pct ?? 100) > 50
+                                  ? 'text-emerald-400'
+                                  : (gw.battery_pct ?? 100) > 20
+                                  ? 'text-amber-400'
+                                  : 'text-rose-400'
+                              }`}
+                            />
+                          )}
+                          <span className="font-bold text-white">
+                            {gw.battery_pct != null ? `${gw.battery_pct}%` : '100%'}
+                          </span>
+                          {gw.battery_voltage_mv ? (
+                            <span className="text-[10px] text-slate-400">
+                              ({(gw.battery_voltage_mv / 1000).toFixed(2)}V)
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="py-3 px-3 text-slate-400">
                         {gw.imei} / {gw.mac_address}
                       </td>
@@ -1304,6 +1342,15 @@ export default function SuperAdminDashboardPage() {
                       </td>
                       <td className="py-3 px-3 text-right">
                         <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleRefreshGatewayMetrics(gw.serial_number)}
+                            disabled={isRefreshingGateway}
+                            className="p-2 rounded-lg bg-slate-800 hover:bg-sky-500/20 text-sky-400 border border-slate-700 transition"
+                            title="Parametrlarni yangilash (Force Sync)"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingGateway ? 'animate-spin' : ''}`} />
+                          </button>
                           <button
                             type="button"
                             onClick={() => openEditGwModal(gw)}
@@ -1331,138 +1378,408 @@ export default function SuperAdminDashboardPage() {
               </table>
             </div>
 
-            {/* AT Command & Modem Diagnostics Terminal */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <Terminal className="w-5 h-5 text-emerald-400" />
+            {/* Gateway Boshqaruvi va Bog'langan Qurilmalar Ro'yxati */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                    <Router className="w-5 h-5 text-sky-400" />
+                  </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white">
-                      Gateway AT-Command & Modem Terminali
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      Gateway Boshqaruvi va Bog‘langan Qurilmalar
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-500/20 text-sky-300 font-normal">
+                        RS485 + GSM Telemetriya
+                      </span>
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      Shlyuz modemiga to‘g‘ridan-to‘g‘ri AT buyruqlarini jo‘natish va diagnostika qilish
+                      Shlyuz batareyasi, aloqa sifati va unga ulangan qavat hublari hamda sensorlarining real-time monitoringi
                     </p>
                   </div>
                 </div>
 
-                {/* Gateway Selector Dropdown */}
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                    <Signal className="w-3.5 h-3.5 text-sky-400" /> Shlyuzni tanlang:
-                  </label>
-                  <select
-                    value={selectedAtGatewayId}
-                    onChange={(e) => setSelectedAtGatewayId(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-sky-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner"
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Gateway Selector Dropdown */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <Signal className="w-3.5 h-3.5 text-sky-400" /> Shlyuz:
+                    </label>
+                    <select
+                      value={selectedAtGatewayId}
+                      onChange={(e) => setSelectedAtGatewayId(e.target.value)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-xs font-mono text-sky-300 font-bold focus:outline-none focus:border-sky-500 shadow-inner"
+                    >
+                      {(devicesInventory?.gateways || []).map((gw) => (
+                        <option key={gw.serial_number} value={gw.serial_number}>
+                          {gw.serial_number} ({gw.sim_operator} • {gw.status.toUpperCase()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Single Force-Sync / Update All Metrics Command */}
+                  <button
+                    type="button"
+                    onClick={() => handleRefreshGatewayMetrics()}
+                    disabled={isRefreshingGateway}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-sky-600/25 transition active:scale-95 disabled:opacity-50"
                   >
-                    {(devicesInventory?.gateways || []).map((gw) => (
-                      <option key={gw.serial_number} value={gw.serial_number}>
-                        {gw.serial_number} ({gw.sim_operator} • {gw.status.toUpperCase()})
-                      </option>
-                    ))}
-                  </select>
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingGateway ? 'animate-spin' : ''}`} />
+                    {isRefreshingGateway ? 'Yangilanmoqda...' : 'Barcha parametrlarni yangilash (Force Sync)'}
+                  </button>
                 </div>
               </div>
 
-              {/* Selected Gateway Live Hardware Specs Card */}
+              {/* Selected Gateway Live Hardware & Battery Specs Card */}
               {(() => {
                 const activeGw =
                   (devicesInventory?.gateways || []).find((g) => g.serial_number === selectedAtGatewayId) ||
                   (devicesInventory?.gateways || [])[0];
+                const battPct = activeGw?.battery_pct ?? (activeGw?.battery_level ?? 100);
+                const battVoltage = activeGw?.battery_voltage_mv
+                  ? (activeGw.battery_voltage_mv / 1000).toFixed(2)
+                  : '4.15';
+                const isCharging = activeGw?.is_charging ?? false;
+                const activeFloorsCount =
+                  typeof activeGw?.rs485_active_floors === 'number'
+                    ? activeGw.rs485_active_floors
+                    : Array.isArray(activeGw?.rs485_active_floors)
+                    ? (activeGw.rs485_active_floors as number[]).length
+                    : 1;
+                const configuredRange = activeGw?.rs485_configured_range || '1-20 qavatlar';
+
                 return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 font-mono text-xs">
-                    <div>
-                      <div className="text-[10px] text-slate-400 uppercase">SHLYUZ / MODEL</div>
-                      <div className="font-bold text-white truncate">
-                        {activeGw?.serial_number || 'GW-LILYGO-TCALL-SIM800'}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 font-mono text-xs">
+                      {/* 1. Model & Serial */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 uppercase">SHLYUZ / MODEL</div>
+                        <div className="font-bold text-white truncate">
+                          {activeGw?.serial_number || 'GW-LILYGO-TCALL-SIM800'}
+                        </div>
+                        <div className="text-[10px] text-sky-400 font-bold truncate">
+                          {activeGw?.firmware_version || 'SIM800L_2G_v5.8'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          Bino: {activeGw?.building_name || 'Bino #1'}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-sky-400 font-bold">{activeGw?.firmware_version || 'SIM800L_2G'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-slate-400 uppercase">IMEI / MAC</div>
-                      <div className="text-slate-300 truncate">{activeGw?.imei || '869482059114099'}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{activeGw?.mac_address}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-slate-400 uppercase">OPERATOR / SIGNAL</div>
-                      <div className="text-sky-300 font-bold">{activeGw?.sim_operator || 'Uztelecom'}</div>
-                      <div className="text-emerald-400 font-bold">{activeGw?.rssi_dbm} dBm</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-slate-400 uppercase">TARMOQ HOLATI</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`w-2 h-2 rounded-full ${activeGw?.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-                        <span className={`text-[11px] font-bold uppercase ${activeGw?.status === 'online' ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {activeGw?.status || 'ONLINE'}
-                        </span>
+
+                      {/* 2. Battery & Power */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 uppercase flex items-center justify-between">
+                          <span>BATAREYA VA QUVVAT</span>
+                          {isCharging && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">
+                              Zaryad
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {isCharging ? (
+                            <BatteryCharging className="w-4 h-4 text-amber-400" />
+                          ) : (
+                            <Battery
+                              className={`w-4 h-4 ${
+                                battPct > 50
+                                  ? 'text-emerald-400'
+                                  : battPct > 20
+                                  ? 'text-amber-400'
+                                  : 'text-rose-400'
+                              }`}
+                            />
+                          )}
+                          <span className="font-bold text-white text-sm">{battPct}%</span>
+                          <span className="text-[10px] text-slate-400 font-sans">({battVoltage}V)</span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              battPct > 50
+                                ? 'bg-emerald-400'
+                                : battPct > 20
+                                ? 'bg-amber-400'
+                                : 'bg-rose-400'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(5, battPct))}%` }}
+                          />
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {isCharging ? 'Tashqi DC manbai' : 'Ichki Li-Ion 18650'}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-400">
-                        So‘nggi aloqa: {activeGw?.last_seen ? new Date(activeGw.last_seen).toLocaleTimeString() : 'N/A'}
+
+                      {/* 3. Cellular & Signal */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 uppercase">GSM / 4G ALOQA</div>
+                        <div className="text-sky-300 font-bold truncate">
+                          {activeGw?.sim_operator || 'Uztelecom GSM'}
+                        </div>
+                        <div className="text-emerald-400 font-bold flex items-center gap-1">
+                          <Signal className="w-3 h-3" />
+                          {activeGw?.rssi_dbm || -68} dBm (CSQ: {Math.max(10, Math.round(((activeGw?.rssi_dbm || -68) + 113) / 2))})
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          IMEI: {activeGw?.imei || '869482059114099'}
+                        </div>
+                      </div>
+
+                      {/* 4. RS485 Bus */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 uppercase">RS485 MAGISTRAL</div>
+                        <div className="text-amber-300 font-bold truncate">
+                          {configuredRange}
+                        </div>
+                        <div className="text-white text-[11px]">
+                          Faol: <span className="text-emerald-400 font-bold">{activeFloorsCount} ta qavat</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Protokol: JSON + Modbus CRC-16
+                        </div>
+                      </div>
+
+                      {/* 5. Online Status */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 uppercase">TARMOQ STATUSI</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              activeGw?.status === 'online'
+                                ? 'bg-emerald-400 animate-pulse'
+                                : 'bg-red-400'
+                            }`}
+                          />
+                          <span
+                            className={`text-[11px] font-bold uppercase ${
+                              activeGw?.status === 'online' ? 'text-emerald-400' : 'text-red-400'
+                            }`}
+                          >
+                            {activeGw?.status || 'ONLINE'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          So‘nggi aloqa: {activeGw?.last_seen ? new Date(activeGw.last_seen).toLocaleTimeString() : 'Hozirgina'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Connected Devices Table with Tabs */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white">
+                            Gatewayga bog‘langan qurilmalar ro‘yxati:
+                          </span>
+                          <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => setGwDeviceTab('all')}
+                              className={`px-3 py-1 rounded-md transition font-medium ${
+                                gwDeviceTab === 'all'
+                                  ? 'bg-sky-600 text-white font-bold'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Barchasi
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGwDeviceTab('hubs')}
+                              className={`px-3 py-1 rounded-md transition font-medium ${
+                                gwDeviceTab === 'hubs'
+                                  ? 'bg-sky-600 text-white font-bold'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              RS485 Qavat Hublari
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGwDeviceTab('sensors')}
+                              className={`px-3 py-1 rounded-md transition font-medium ${
+                                gwDeviceTab === 'sensors'
+                                  ? 'bg-sky-600 text-white font-bold'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Sensorlar
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-[11px] text-slate-400">
+                          Jami bog‘langan: <span className="font-bold text-sky-400">
+                            {(devicesInventory?.floor_hubs || []).length + (devicesInventory?.end_devices || []).length} ta
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Connected Devices Table */}
+                      <div className="rounded-xl bg-slate-950 border border-slate-800 overflow-x-auto shadow-inner">
+                        <table className="w-full text-left border-collapse text-xs font-mono">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                              <th className="py-2.5 px-3">QURILMA TURI & CHIP ID</th>
+                              <th className="py-2.5 px-3">JOYLASHUVI</th>
+                              <th className="py-2.5 px-3">BOG‘LANISH KANALI</th>
+                              <th className="py-2.5 px-3">HOLATI</th>
+                              <th className="py-2.5 px-3">BATAREYA / QUVVAT</th>
+                              <th className="py-2.5 px-3">KO‘RSATKICH / TELEMETRIYA</th>
+                              <th className="py-2.5 px-3">SO‘NGGI ALOQA</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60">
+                            {/* Render Floor Hubs */}
+                            {(gwDeviceTab === 'all' || gwDeviceTab === 'hubs') &&
+                              (devicesInventory?.floor_hubs || []).map((hub) => (
+                                <tr key={`hub-${hub.building_id}-${hub.floor_number}`} className="text-slate-200 hover:bg-slate-800/40">
+                                  <td className="py-2.5 px-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                                        <Router className="w-3.5 h-3.5 text-indigo-400" />
+                                      </div>
+                                      <div>
+                                        <div className="font-bold text-white text-[11px]">
+                                          Qavat Hubi (ESP32-C3)
+                                        </div>
+                                        <div className="text-[10px] text-slate-400">
+                                          MAC: {hub.hub_mac}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="font-bold text-sky-400">{hub.floor_number}-qavat</div>
+                                    <div className="text-[10px] text-slate-400">{hub.building_name}</div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-bold">
+                                      RS485 (DIP #{hub.dip_switch_address})
+                                    </span>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">
+                                      Kechikish: {hub.rs485_latency_ms || 18} ms
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                        hub.hub_status === 'online'
+                                          ? 'bg-emerald-500/20 text-emerald-300'
+                                          : 'bg-red-500/20 text-red-300'
+                                      }`}
+                                    >
+                                      {hub.hub_status}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="flex items-center gap-1.5">
+                                      <Battery className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span className="font-bold text-white">{hub.hub_battery_pct}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="text-white font-medium">
+                                      {hub.connected_endpoints_count} ta sensor ulangan
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-[10px] text-slate-400">
+                                    Real-time (RS485 faol)
+                                  </td>
+                                </tr>
+                              ))}
+
+                            {/* Render Sensor Endpoints */}
+                            {(gwDeviceTab === 'all' || gwDeviceTab === 'sensors') &&
+                              (devicesInventory?.end_devices || []).map((ep) => (
+                                <tr key={`ep-${ep.id}`} className="text-slate-200 hover:bg-slate-800/40">
+                                  <td className="py-2.5 px-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                        <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                                      </div>
+                                      <div>
+                                        <div className="font-bold text-white text-[11px]">
+                                          {ep.sensor_type}
+                                        </div>
+                                        <div className="text-[10px] text-sky-400">
+                                          {ep.chip_id}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="text-white font-bold">{ep.floor_number}-qavat, {ep.room_number}-xona</div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 text-[10px] font-bold">
+                                      {ep.parent_link_type === 'FLOOR_HUB' ? 'RS485 Floor Hub orqali' : 'To‘g‘ridan-to‘g‘ri Gateway'}
+                                    </span>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">
+                                      Node: {ep.parent_node_id}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                        ep.status === 'alarm'
+                                          ? 'bg-rose-500/20 text-rose-300 animate-pulse'
+                                          : ep.status === 'warning'
+                                          ? 'bg-amber-500/20 text-amber-300'
+                                          : ep.status === 'online'
+                                          ? 'bg-emerald-500/20 text-emerald-300'
+                                          : 'bg-slate-800 text-slate-400'
+                                      }`}
+                                    >
+                                      {ep.status}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="flex items-center gap-1.5">
+                                      <Battery
+                                        className={`w-3.5 h-3.5 ${
+                                          ep.battery_level > 50
+                                            ? 'text-emerald-400'
+                                            : ep.battery_level > 20
+                                            ? 'text-amber-400'
+                                            : 'text-rose-400'
+                                        }`}
+                                      />
+                                      <span className="font-bold text-white">{ep.battery_level}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <div className="font-bold text-white">
+                                      {typeof ep.primary_value === 'boolean'
+                                        ? ep.primary_value
+                                          ? 'OCHIQ / FAOL'
+                                          : 'YOPUQ / ME\'YOR'
+                                        : `${ep.primary_value} ${ep.primary_unit}`}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400">
+                                      T={ep.temperature}°C • Smoke={ep.smoke_ppm}ppm
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-[10px] text-slate-400">
+                                    {ep.last_seen ? new Date(ep.last_seen).toLocaleTimeString() : 'N/A'}
+                                  </td>
+                                </tr>
+                              ))}
+
+                            {(devicesInventory?.floor_hubs || []).length === 0 &&
+                              (devicesInventory?.end_devices || []).length === 0 && (
+                                <tr>
+                                  <td colSpan={7} className="py-8 text-center text-slate-500 italic">
+                                    Ushbu shlyuzga biriktirilgan qurilmalar hozircha topilmadi.
+                                  </td>
+                                </tr>
+                              )}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
                 );
               })()}
-
-              {/* AT Logs Output Terminal */}
-              <div className="h-40 rounded-xl bg-slate-950 border border-slate-800 p-3.5 font-mono text-[11px] overflow-y-auto space-y-1.5 shadow-inner">
-                {(sim7670?.at_logs || []).length === 0 ? (
-                  <div className="text-slate-500 italic">AT jurnallari hozircha bo‘sh. Buyruq yuboring.</div>
-                ) : (
-                  (sim7670?.at_logs || []).map((log, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </span>
-                      <span className="text-sky-400 font-bold">&gt; {log.tx}</span>
-                      <span className="text-emerald-400 font-medium">→ {log.rx}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Quick AT Preset Buttons */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-slate-400 font-semibold mr-1">Tezkor buyruqlar:</span>
-                {[
-                  { label: 'Signal (CSQ)', cmd: 'AT+CSQ' },
-                  { label: 'SIM Holati', cmd: 'AT+CPIN?' },
-                  { label: 'Operator', cmd: 'AT+COPS?' },
-                  { label: 'GPRS Holati', cmd: 'AT+CGATT?' },
-                  { label: 'Modem Info', cmd: 'ATI' },
-                  { label: 'Tarmoq Registratsiyasi', cmd: 'AT+CREG?' },
-                  { label: 'Batareya/Voltaj', cmd: 'AT+CBC' }
-                ].map((preset) => (
-                  <button
-                    key={preset.cmd}
-                    type="button"
-                    onClick={() => {
-                      setCustomAtCmd(preset.cmd);
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-mono border border-slate-700 transition"
-                  >
-                    {preset.cmd}
-                  </button>
-                ))}
-              </div>
-
-              {/* AT Command Input Form */}
-              <form onSubmit={handleSendAtCommand} className="flex gap-2">
-                <input
-                  type="text"
-                  value={customAtCmd}
-                  onChange={(e) => setCustomAtCmd(e.target.value)}
-                  placeholder="AT buyrug'ini kiriting (masalan: AT+CSQ, AT+CMGS...)"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-                />
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-sky-600/25 transition active:scale-95"
-                >
-                  <Send className="w-3.5 h-3.5" /> Yuborish (SEND)
-                </button>
-              </form>
             </div>
           </div>
         )}

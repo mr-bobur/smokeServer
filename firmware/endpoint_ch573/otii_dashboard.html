@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Qoitech Otii 3 - CH573 Battery Emulator (Real Transistor & LED Model)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    canvas { width: 100% !important; height: 260px !important; }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+    
+    <!-- Header Card -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+          <h1 class="text-xl font-bold text-[var(--foreground)]">Qoitech Otii 3 — CH573 Real Hardware Profiler</h1>
+        </div>
+        <p class="text-[var(--muted-foreground)] text-sm mt-1">
+          Model: <strong>2x AA Varta Alkaline (25°C, 3100 mAh)</strong> + Tranzistorlar (BJT/MOSFET) + Tashqi Holat LED'i
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Otii 3 Engine Active
+        </span>
+        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          Transistor Switch Simulated
+        </span>
+      </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+        <span class="text-xs text-[var(--muted-foreground)] uppercase tracking-wider font-semibold">Uyqu Toki (MCU + Oqish)</span>
+        <div class="text-2xl font-bold text-emerald-400 mt-1" id="kpi-sleep">2.10 µA</div>
+        <span class="text-xs text-[var(--muted-foreground)]">Tranzistor oqishi bilan birga</span>
+      </div>
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+        <span class="text-xs text-[var(--muted-foreground)] uppercase tracking-wider font-semibold">Impuls Pik Toki (Peak)</span>
+        <div class="text-2xl font-bold text-amber-400 mt-1" id="kpi-peak">34.7 mA</div>
+        <span class="text-xs text-[var(--muted-foreground)]">IR (25mA) + LED (3mA) + MCU</span>
+      </div>
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+        <span class="text-xs text-[var(--muted-foreground)] uppercase tracking-wider font-semibold">O'rtacha Sarf (I_avg)</span>
+        <div class="text-2xl font-bold text-blue-400 mt-1" id="kpi-avg">107.2 µA</div>
+        <span class="text-xs text-[var(--muted-foreground)]">0.107 mA yuklama</span>
+      </div>
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+        <span class="text-xs text-[var(--muted-foreground)] uppercase tracking-wider font-semibold">2x AA Xizmat Muddati</span>
+        <div class="text-2xl font-bold text-purple-400 mt-1" id="kpi-life">2.6 YIL</div>
+        <span class="text-xs text-[var(--muted-foreground)]" id="kpi-life-sub">31 oy / 960 kun</span>
+      </div>
+    </div>
+
+    <!-- Charts Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Track 1: Transient Waveform -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold text-[var(--foreground)]">Track 1: 5-Soniyalik Real Impuls To'lqini (Otii Waveform)</h2>
+            <p class="text-xs text-[var(--muted-foreground)]">Uyqu (2.1µA) -> IR Emitter + Baza/Zatvor + Tashqi LED (34.7mA)</p>
+          </div>
+          <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">0 - 5000 ms</span>
+        </div>
+        <canvas id="waveformCanvas" class="rounded-lg bg-[var(--background)] p-2"></canvas>
+      </div>
+
+      <!-- Track 2: Discharge Curve -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold text-[var(--foreground)]">Track 2: Zaryadsizlanish & Voltage Sag Egri Chizig'i</h2>
+            <p class="text-xs text-[var(--muted-foreground)]">34.7mA pik yuklamasida 2x AA kuchlanishining oylar bo'yicha dinamikasi</p>
+          </div>
+          <span class="text-xs font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded" id="label-months">0 - 31 Oy</span>
+        </div>
+        <canvas id="dischargeCanvas" class="rounded-lg bg-[var(--background)] p-2"></canvas>
+      </div>
+
+    </div>
+
+    <!-- Interactive Simulator Controls -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 shadow-sm space-y-5">
+      <div class="border-b border-[var(--border)] pb-3">
+        <h3 class="text-base font-semibold text-[var(--foreground)]">⚙️ Real Sxemotexnika Parametrlari (Jonli hisoblagich)</h3>
+        <p class="text-xs text-[var(--muted-foreground)] mt-0.5">Tranzistor turi va LED parametrlarini o'zgartirib, quvvat balansini kuzating</p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        
+        <!-- Transistor Selector -->
+        <div>
+          <span class="text-xs text-[var(--muted-foreground)] block mb-1">Tranzistor Texnologiyasi:</span>
+          <div class="grid grid-cols-2 gap-2 mt-1">
+            <button id="btn-bjt" class="px-3 py-2 text-xs font-bold rounded-lg border border-blue-500 bg-blue-500/20 text-blue-400 transition">
+              BJT (NPN)
+            </button>
+            <button id="btn-mosfet" class="px-3 py-2 text-xs font-bold rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] hover:border-emerald-500 transition">
+              N-MOSFET
+            </button>
+          </div>
+          <span class="text-[11px] text-[var(--muted-foreground)] block mt-1" id="hint-transistor">
+            BJT: S8050 / 2N3904 (Ib = 1.8mA qo'shiladi)
+          </span>
+        </div>
+
+        <!-- External LED Current -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-[var(--muted-foreground)]">Tashqi LED Toki:</span>
+            <span class="font-mono font-bold text-[var(--foreground)]" id="val-led-cur">3.0 mA</span>
+          </div>
+          <input type="range" id="slider-led-cur" min="1.0" max="10.0" step="0.5" value="3.0" class="w-full accent-emerald-500">
+          <div class="flex justify-between text-[11px] text-[var(--muted-foreground)] mt-1">
+            <span>1mA (Super-bright)</span>
+            <span>3mA (Norm)</span>
+            <span>10mA</span>
+          </div>
+        </div>
+
+        <!-- External LED Flash Duration -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-[var(--muted-foreground)]">Tashqi LED Chaqnashi:</span>
+            <span class="font-mono font-bold text-[var(--foreground)]" id="val-led-dur">15 ms</span>
+          </div>
+          <input type="range" id="slider-led-dur" min="5" max="50" step="1" value="15" class="w-full accent-amber-500">
+          <div class="flex justify-between text-[11px] text-[var(--muted-foreground)] mt-1">
+            <span>5ms (Tejamkor)</span>
+            <span>15ms</span>
+            <span>50ms</span>
+          </div>
+        </div>
+
+        <!-- IR LED Current -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-[var(--muted-foreground)]">IR Diod Impuls Toki:</span>
+            <span class="font-mono font-bold text-[var(--foreground)]" id="val-ir-cur">25 mA</span>
+          </div>
+          <input type="range" id="slider-ir-cur" min="10" max="50" step="5" value="25" class="w-full accent-purple-500">
+          <div class="flex justify-between text-[11px] text-[var(--muted-foreground)] mt-1">
+            <span>10mA</span>
+            <span>25mA (Standart)</span>
+            <span>50mA</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Engineering Comparison Table -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 shadow-sm space-y-4">
+      <h3 class="text-base font-semibold text-[var(--foreground)]">🔬 Sxemotexnik Taqqoslash: BJT vs MOSFET vs Optimallashtirilgan Model</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+              <th class="py-2.5 px-3">Ko'rsatkich</th>
+              <th class="py-2.5 px-3">Variant 1: Standart BJT (NPN)</th>
+              <th class="py-2.5 px-3">Variant 2: N-MOSFET (AO3400)</th>
+              <th class="py-2.5 px-3">Variant 3: Super-Bright LED + MOSFET</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--border)] font-mono">
+            <tr>
+              <td class="py-2.5 px-3 text-[var(--foreground)] font-sans">Uyqudagi oqish toki</td>
+              <td class="py-2.5 px-3 text-emerald-400">2.10 µA</td>
+              <td class="py-2.5 px-3 text-emerald-400">2.02 µA</td>
+              <td class="py-2.5 px-3 text-emerald-400">2.02 µA</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 text-[var(--foreground)] font-sans">IR Emitter Bosqichi</td>
+              <td class="py-2.5 px-3">26.8 mA (25mA + 1.8mA Baza)</td>
+              <td class="py-2.5 px-3 text-blue-400">25.0 mA (Zatvor toki 0)</td>
+              <td class="py-2.5 px-3 text-blue-400">25.0 mA (10ms qisqartirilgan)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 text-[var(--foreground)] font-sans">Tashqi Holat LED'i</td>
+              <td class="py-2.5 px-3">3.0 mA (15ms)</td>
+              <td class="py-2.5 px-3">3.0 mA (15ms)</td>
+              <td class="py-2.5 px-3 text-amber-400">2.0 mA (8ms Super-bright)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 text-[var(--foreground)] font-sans">Pik Impuls Toki (Peak)</td>
+              <td class="py-2.5 px-3">34.67 mA</td>
+              <td class="py-2.5 px-3">32.92 mA</td>
+              <td class="py-2.5 px-3 text-purple-400">31.87 mA</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 px-3 text-[var(--foreground)] font-sans">O'rtacha Umumiy Tok ($I_{avg}$)</td>
+              <td class="py-2.5 px-3 font-bold text-amber-400">107.2 µA</td>
+              <td class="py-2.5 px-3 font-bold text-blue-400">101.8 µA</td>
+              <td class="py-2.5 px-3 font-bold text-emerald-400">66.1 µA</td>
+            </tr>
+            <tr class="bg-emerald-500/5">
+              <td class="py-2.5 px-3 text-[var(--foreground)] font-sans font-bold">2x AA Xizmat Muddati</td>
+              <td class="py-2.5 px-3 font-bold text-amber-400">2.63 YIL</td>
+              <td class="py-2.5 px-3 font-bold text-blue-400">2.79 YIL</td>
+              <td class="py-2.5 px-3 font-bold text-emerald-400">4.11 YIL ✅</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const NOMINAL_MAH = 3100.0;
+    const SELF_DISCHARGE = 0.025;
+    const CUTOFF_V = 2.0;
+
+    let trType = 'BJT';
+    let ledCur = 3.0;
+    let ledDur = 15.0;
+    let irCur = 25.0;
+    let irDur = 15.0;
+    let cycleSec = 5.0;
+
+    const curvePoints = [
+      { c: 0, v: 1.602, r: 0.478 },
+      { c: 200, v: 1.485, r: 0.350 },
+      { c: 500, v: 1.385, r: 0.365 },
+      { c: 1000, v: 1.340, r: 0.395 },
+      { c: 1550, v: 1.296, r: 0.517 },
+      { c: 2000, v: 1.255, r: 0.620 },
+      { c: 2500, v: 1.210, r: 0.810 },
+      { c: 2800, v: 1.150, r: 1.050 },
+      { c: 3000, v: 1.020, r: 1.250 },
+      { c: 3100, v: 0.798, r: 1.370 }
+    ];
+
+    function getOcvEsr(mahPerCell) {
+      if (mahPerCell <= 0) return { v: curvePoints[0].v, r: curvePoints[0].r };
+      if (mahPerCell >= 3100) return { v: curvePoints[curvePoints.length-1].v, r: curvePoints[curvePoints.length-1].r };
+      for (let i = 0; i < curvePoints.length - 1; i++) {
+        if (mahPerCell >= curvePoints[i].c && mahPerCell <= curvePoints[i+1].c) {
+          const ratio = (mahPerCell - curvePoints[i].c) / (curvePoints[i+1].c - curvePoints[i].c);
+          return {
+            v: curvePoints[i].v + ratio * (curvePoints[i+1].v - curvePoints[i].v),
+            r: curvePoints[i].r + ratio * (curvePoints[i+1].r - curvePoints[i].r)
+          };
+        }
+      }
+      return { v: 1.0, r: 1.0 };
+    }
+
+    function recalculate() {
+      // 1. Calculate component currents
+      const iSleepUa = (trType === 'BJT') ? 2.10 : 2.02;
+      const iBaseDriveMa = (trType === 'BJT') ? 1.8 : 0.05;
+      const iIrStageMa = irCur + iBaseDriveMa;
+      const iRxStageMa = 0.065;
+      const iMcuActiveMa = 4.8;
+
+      const iPulseActiveMa = iIrStageMa + iRxStageMa + iMcuActiveMa;
+      const iPeakMa = iPulseActiveMa + ledCur;
+
+      // Charge per cycle (5s)
+      const qSleepUAs = iSleepUa * ((cycleSec * 1000 - Math.max(irDur, ledDur)) / 1000);
+      const qIrUAs = (iPulseActiveMa * 1000) * (irDur / 1000);
+      const qLedUAs = (ledCur * 1000) * (ledDur / 1000);
+      const qBleUAs = (13.0 * 1000) * (2.5 / 1000) * (cycleSec / 30.0);
+
+      const totalQUAs = qSleepUAs + qIrUAs + qLedUAs + qBleUAs;
+      const iAvgUa = totalQUAs / cycleSec;
+      const iAvgMa = iAvgUa / 1000.0;
+
+      // 2. Discharge loop
+      const mahPerDay = iAvgMa * 24.0;
+      let dischargedMah = 0;
+      let totalDays = 0;
+      const history = [];
+
+      while (dischargedMah < NOMINAL_MAH) {
+        const selfDay = (NOMINAL_MAH * SELF_DISCHARGE) / 365.0;
+        dischargedMah += (mahPerDay + selfDay);
+        totalDays++;
+
+        if (totalDays % 30 === 0) {
+          const m = Math.floor(totalDays / 30);
+          const { v, r } = getOcvEsr(dischargedMah);
+          const ocv2 = v * 2.0;
+          const esr2 = r * 2.0;
+          const sag2 = ocv2 - (iPeakMa * 1e-3 * esr2);
+          const remPct = Math.max(0, (1 - dischargedMah / NOMINAL_MAH) * 100);
+          history.push({ month: m, ocv: ocv2, sag: sag2, esr: esr2, remPct });
+          if (sag2 <= CUTOFF_V) break;
+        }
+      }
+
+      const totalYears = totalDays / 365.25;
+
+      // Update UI cards
+      document.getElementById('kpi-sleep').textContent = iSleepUa.toFixed(2) + ' µA';
+      document.getElementById('kpi-peak').textContent = iPeakMa.toFixed(1) + ' mA';
+      document.getElementById('kpi-avg').textContent = iAvgUa.toFixed(1) + ' µA';
+      document.getElementById('kpi-life').textContent = totalYears.toFixed(1) + ' YIL';
+      document.getElementById('kpi-life-sub').textContent = Math.floor(totalDays/30) + ' oy / ' + totalDays + ' kun';
+      document.getElementById('label-months').textContent = '0 - ' + Math.floor(totalDays/30) + ' Oy';
+
+      drawWaveform(iPeakMa, iPulseActiveMa, ledCur);
+      drawDischarge(history);
+    }
+
+    function drawWaveform(iPeak, iPulse, iLed) {
+      const cvs = document.getElementById('waveformCanvas');
+      const ctx = cvs.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      cvs.width = cvs.clientWidth * dpr;
+      cvs.height = cvs.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = cvs.clientWidth;
+      const h = cvs.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(128, 128, 128, 0.15)';
+      ctx.lineWidth = 1;
+      for (let y = 20; y < h - 20; y += 45) {
+        ctx.beginPath();
+        ctx.moveTo(45, y);
+        ctx.lineTo(w - 10, y);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#888';
+      ctx.font = '10px monospace';
+      ctx.fillText('40 mA', 5, 25);
+      ctx.fillText('30 mA', 5, 75);
+      ctx.fillText('20 mA', 5, 125);
+      ctx.fillText('10 mA', 5, 175);
+      ctx.fillText(' 2 µA', 5, 230);
+
+      ctx.fillText('0s', 45, h - 5);
+      ctx.fillText('1s', 45 + (w - 55) * 0.2, h - 5);
+      ctx.fillText('2s', 45 + (w - 55) * 0.4, h - 5);
+      ctx.fillText('3s', 45 + (w - 55) * 0.6, h - 5);
+      ctx.fillText('4s', 45 + (w - 55) * 0.8, h - 5);
+      ctx.fillText('5s', w - 25, h - 5);
+
+      const baselineY = 225;
+      const peakY = 225 - (iPeak / 40.0) * (225 - 25);
+
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(45, baselineY);
+      ctx.lineTo(60, baselineY);
+      ctx.lineTo(60, peakY);
+      ctx.lineTo(75, peakY);
+      ctx.lineTo(75, baselineY);
+
+      // BLE Keepalive burst at 2.5s
+      const bleX = 45 + (w - 55) * 0.5;
+      const bleY = 225 - (13.0 / 40.0) * (225 - 25);
+      ctx.lineTo(bleX, baselineY);
+      ctx.lineTo(bleX, bleY);
+      ctx.lineTo(bleX + 10, bleY);
+      ctx.lineTo(bleX + 10, baselineY);
+
+      ctx.lineTo(w - 10, baselineY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('Pik: ' + iPeak.toFixed(1) + ' mA (IR + LED + Tranzistor)', 85, peakY + 12);
+      ctx.fillStyle = '#a78bfa';
+      ctx.fillText('BLE 5.0 (13mA)', bleX + 15, bleY + 10);
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('Standby Sleep (2.1 µA)', bleX + 35, baselineY - 8);
+    }
+
+    function drawDischarge(data) {
+      if (!data || data.length === 0) return;
+      const cvs = document.getElementById('dischargeCanvas');
+      const ctx = cvs.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      cvs.width = cvs.clientWidth * dpr;
+      cvs.height = cvs.clientHeight * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = cvs.clientWidth;
+      const h = cvs.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(128, 128, 128, 0.15)';
+      ctx.lineWidth = 1;
+      for (let y = 20; y < h - 20; y += 45) {
+        ctx.beginPath();
+        ctx.moveTo(40, y);
+        ctx.lineTo(w - 10, y);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#888';
+      ctx.font = '10px monospace';
+      ctx.fillText('3.2V', 5, 25);
+      ctx.fillText('2.8V', 5, 75);
+      ctx.fillText('2.4V', 5, 130);
+      ctx.fillText('2.0V', 5, 185);
+      ctx.fillText('1.6V', 5, 235);
+
+      const maxM = data[data.length - 1].month;
+      ctx.fillText('0', 40, h - 5);
+      ctx.fillText(Math.floor(maxM * 0.5) + ' oy', 40 + (w - 50) * 0.5, h - 5);
+      ctx.fillText(maxM + ' oy', w - 40, h - 5);
+
+      function mapY(v) { return 235 - ((v - 1.6) / (3.2 - 1.6)) * (235 - 25); }
+      function mapX(m) { return 40 + (m / maxM) * (w - 50); }
+
+      // Cutoff
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(40, mapY(2.0));
+      ctx.lineTo(w - 10, mapY(2.0));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('Cutoff: 2.0V', w - 75, mapY(2.0) - 4);
+
+      // OCV curve
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      data.forEach((pt, i) => {
+        const x = mapX(pt.month);
+        const y = mapY(pt.ocv);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Sag curve
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      data.forEach((pt, i) => {
+        const x = mapX(pt.month);
+        const y = mapY(pt.sag);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('● OCV', 50, 20);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('● Sag (34mA pikda)', 120, 20);
+    }
+
+    // Event Listeners
+    const btnBjt = document.getElementById('btn-bjt');
+    const btnMosfet = document.getElementById('btn-mosfet');
+    const hintTr = document.getElementById('hint-transistor');
+
+    btnBjt.addEventListener('click', () => {
+      trType = 'BJT';
+      btnBjt.className = 'px-3 py-2 text-xs font-bold rounded-lg border border-blue-500 bg-blue-500/20 text-blue-400 transition';
+      btnMosfet.className = 'px-3 py-2 text-xs font-bold rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] hover:border-emerald-500 transition';
+      hintTr.textContent = 'BJT: S8050 / 2N3904 (Ib = 1.8mA qo\'shiladi)';
+      recalculate();
+    });
+
+    btnMosfet.addEventListener('click', () => {
+      trType = 'MOSFET';
+      btnMosfet.className = 'px-3 py-2 text-xs font-bold rounded-lg border border-emerald-500 bg-emerald-500/20 text-emerald-400 transition';
+      btnBjt.className = 'px-3 py-2 text-xs font-bold rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)] hover:border-blue-500 transition';
+      hintTr.textContent = 'MOSFET: AO3400 / SI2302 (Zatvor toki 0, faqat sig\'im)';
+      recalculate();
+    });
+
+    document.getElementById('slider-led-cur').addEventListener('input', (e) => {
+      ledCur = parseFloat(e.target.value);
+      document.getElementById('val-led-cur').textContent = ledCur.toFixed(1) + ' mA';
+      recalculate();
+    });
+
+    document.getElementById('slider-led-dur').addEventListener('input', (e) => {
+      ledDur = parseFloat(e.target.value);
+      document.getElementById('val-led-dur').textContent = ledDur + ' ms';
+      recalculate();
+    });
+
+    document.getElementById('slider-ir-cur').addEventListener('input', (e) => {
+      irCur = parseFloat(e.target.value);
+      document.getElementById('val-ir-cur').textContent = irCur + ' mA';
+      recalculate();
+    });
+
+    window.addEventListener('resize', recalculate);
+    recalculate();
+  </script>
+</body>
+</html>

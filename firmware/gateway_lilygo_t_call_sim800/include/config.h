@@ -34,7 +34,15 @@
 // FreeRTOS Buffer Limits
 #define MAX_QUEUED_TELEMETRY        32
 
-// BLE Scanning Engine Parameters
 #define BLE_SCAN_INTERVAL_MS        100
 #define BLE_SCAN_WINDOW_MS          99
 #define BLE_SCAN_DURATION_SEC       5
+
+// RS485 Industrial Bus Multi-Drop Architecture
+// Configured to support buildings with 3 to 20 floor MCUs
+#define RS485_MIN_FLOOR             1      // Lowest floor address (default 1)
+#define RS485_MAX_FLOOR             20     // Highest floor address (up to 20 floors)
+#define RS485_POLL_INTERVAL_MS      150    // Time gap between querying floor MCUs
+#define RS485_REPLY_TIMEOUT_MS      250    // Response timeout per floor MCU
+#define RS485_MAX_RETRIES           3      // Automatic retry attempts if packet lost or CRC error
+#define RS485_BROADCAST_ADDR        255    // Broadcast address to all floor MCUs

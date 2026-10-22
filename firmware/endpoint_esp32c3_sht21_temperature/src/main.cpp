@@ -243,12 +243,15 @@ void handleButton() {
     static bool isPressing = false;
     static bool restartTriggered = false;
 
-    if (digitalRead(PIN_KEY_BTN) == LOW) {
+    // Detect button press on either PIN_KEY_BTN (GPIO 2, shared with SCL) or PIN_BOOT_BTN (GPIO 9)
+    bool isBtnDown = (digitalRead(PIN_KEY_BTN) == LOW) || (digitalRead(PIN_BOOT_BTN) == LOW);
+
+    if (isBtnDown) {
         if (!isPressing) {
             isPressing = true;
             pressStartMs = millis();
             restartTriggered = false;
-            Serial.println("[Button] KEY button pressed (Active LOW). Tracking duration...");
+            Serial.println("[Button] KEY/BOOT button pressed (Active LOW). Tracking duration...");
         } else {
             uint32_t holdDuration = millis() - pressStartMs;
 
@@ -361,7 +364,7 @@ void setup() {
     pinMode(PIN_BLUE_LED, OUTPUT);
     digitalWrite(PIN_BLUE_LED, LOW);
 
-    pinMode(PIN_KEY_BTN, INPUT_PULLUP);
+    pinMode(PIN_BOOT_BTN, INPUT_PULLUP);
 
     Serial.begin(115200);
     delay(1000); // Allow UART connection

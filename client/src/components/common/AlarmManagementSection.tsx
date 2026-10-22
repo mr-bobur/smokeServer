@@ -253,7 +253,11 @@ export const AlarmManagementSection: React.FC<AlarmManagementSectionProps> = ({
                   Alarmlarni Boshqarish va Tarix Jurnali
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                  {userRole === 'super_admin' ? 'ADMIN NAZORATI' : 'SHIRKAT BOSHQARUVI'}
+                  {userRole === 'super_admin'
+                    ? 'ADMIN NAZORATI'
+                    : userRole === 'user'
+                      ? 'XONADON XAVFSIZLIGI (USER)'
+                      : 'SHIRKAT BOSHQARUVI'}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

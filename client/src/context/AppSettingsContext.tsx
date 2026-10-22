@@ -66,6 +66,9 @@ const translations: Record<LanguageCode, Record<string, string>> = {
 
     // Resident Portal
     my_apartment: 'Mening Xonadonim Topologiyasi va Xavfsizligi',
+    resident_menu_home: 'Bosh sahifa (Home)',
+    resident_menu_devices: 'Qurilmalar (Devices)',
+    resident_menu_alarms: 'Alarmlar & Xavfsizlik',
     buy_install_title: 'Yangi Qurilma Qo‘shish (Self-Service O‘rnatish)',
     arm_away: 'ARM AWAY (Uydan chiqdim)',
     arm_home: 'ARM HOME (Uydaman)',
@@ -126,6 +129,9 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     type_GLASS_BREAK: 'Glass Break Sensor (GLASS)',
 
     my_apartment: 'My Apartment Topology & Perimeter Security',
+    resident_menu_home: 'Home Dashboard',
+    resident_menu_devices: 'Devices & Pairing',
+    resident_menu_alarms: 'Alarms & Security',
     buy_install_title: 'Install New Device (Resident Self-Service)',
     arm_away: 'ARM AWAY (Full Lockdown)',
     arm_home: 'ARM HOME (Stay Mode)',
@@ -186,6 +192,9 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     type_GLASS_BREAK: 'Датчик разбития стекла (GLASS)',
 
     my_apartment: 'Топология и Безопасность Моей Квартиры',
+    resident_menu_home: 'Главная (Дом)',
+    resident_menu_devices: 'Устройства и сопряжение',
+    resident_menu_alarms: 'Тревоги и Безопасность',
     buy_install_title: 'Установка Нового Устройства (Самообслуживание)',
     arm_away: 'ОХРАНА: ВНЕ ДОМА',
     arm_home: 'ОХРАНА: ДОМА',
