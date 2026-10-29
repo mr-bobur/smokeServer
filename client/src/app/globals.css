@@ -284,3 +284,22 @@ html.light-mode .blueprint-grid {
 .animate-strobe-ring {
   animation: strobeRing 1.15s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
+
+/* Mobile-First Touch & Native App Helpers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+.touch-callout-none {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

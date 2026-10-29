@@ -144,12 +144,6 @@ export interface GatewayDeviceRecord {
   rssi_dbm: number;
   status: 'online' | 'offline' | 'pairing_mode';
   pairing_mode_active: boolean;
-  battery_level?: number;
-  battery_pct?: number;
-  battery_voltage_mv?: number;
-  is_charging?: boolean;
-  rs485_active_floors?: number;
-  rs485_configured_range?: string;
   last_seen: string;
   created_at: string;
 }

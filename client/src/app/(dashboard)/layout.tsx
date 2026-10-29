@@ -267,7 +267,7 @@ export default function DashboardLayout({
       )}
 
       {/* Main Portal Content */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-5">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-2.5 sm:px-4 lg:px-6 py-3 sm:py-5">
         {children}
       </main>
 

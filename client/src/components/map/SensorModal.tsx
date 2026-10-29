@@ -286,7 +286,13 @@ export const SensorModal: React.FC<SensorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-slate-900/95 border-l border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col">
+    <>
+      {/* Mobile/Desktop Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+        onClick={onClose}
+      />
+      <div className="fixed inset-y-0 right-0 z-50 w-full sm:max-w-md bg-slate-900 border-l border-slate-700/80 backdrop-blur-xl shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
       {/* Header */}
       <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
         <div className="flex items-center gap-3">
@@ -684,5 +690,6 @@ export const SensorModal: React.FC<SensorModalProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };

@@ -1154,23 +1154,7 @@ export const sendRpcCommand = (req: AuthenticatedRequest, res: Response): void =
     immediateAck: immediate_ack
   });
 
-  // If target is CENTRAL_GATEWAY, publish directly to Gateway MQTT Command Topic
-  if (target_type === 'CENTRAL_GATEWAY' && isMqttBrokerConnected && mqttClient) {
-    const gwCmdTopic = `smartbuilding/gateway/${target_id}/command`;
-    mqttClient.publish(
-      gwCmdTopic,
-      JSON.stringify({
-        command: method,
-        method: method,
-        params: params || {},
-        timestamp: Date.now()
-      }),
-      { qos: 1 }
-    );
-    console.log(`[MQTT RPC] Dispatched ${method} to ${gwCmdTopic}`);
-  }
-
-  // If this RPC is WAKEUP_AND_SYNC for an END_DEVICE, sync its shared attributes immediately
+  // If this RPC isWAKEUP_AND_SYNC for an END_DEVICE, sync its shared attributes immediately
   if (target_type === 'END_DEVICE') {
     const sensor = dbStore.sensors.find((s) => s.chip_id === target_id);
     if (sensor && (method === 'WAKEUP_AND_SYNC' || immediate_ack)) {
@@ -1187,40 +1171,6 @@ export const sendRpcCommand = (req: AuthenticatedRequest, res: Response): void =
   res.status(201).json({
     message: `RPC [${method}] dispatched to ${target_type} (${target_id}) -> Status: ${rpcCmd.status}`,
     rpc_command: rpcCmd
-  });
-};
-
-export const refreshGatewayMetrics = (req: AuthenticatedRequest, res: Response): void => {
-  const serialNumber = req.params.serialNumber || req.body.serial_number;
-  const gw =
-    dbStore.gateways.find((g) => g.serial_number === serialNumber || String(g.id) === serialNumber) ||
-    dbStore.gateways[0];
-
-  if (!gw) {
-    res.status(404).json({ error: 'Gateway not found' });
-    return;
-  }
-
-  if (isMqttBrokerConnected && mqttClient) {
-    const gwCmdTopic = `smartbuilding/gateway/${gw.serial_number}/command`;
-    mqttClient.publish(
-      gwCmdTopic,
-      JSON.stringify({
-        command: 'REFRESH_ALL_METRICS',
-        method: 'REFRESH_ALL_METRICS',
-        requested_by: req.user?.id || 1,
-        timestamp: Date.now()
-      }),
-      { qos: 1 }
-    );
-    console.log(`[MQTT RPC] Dispatched REFRESH_ALL_METRICS to ${gwCmdTopic}`);
-  }
-
-  socketService.emitGlobal('GATEWAY_UPDATE', { gateway: gw });
-
-  res.json({
-    message: `Parametrlarni yangilash buyrug‘i ${gw.serial_number} shlyuziga jo‘natildi`,
-    gateway: gw
   });
 };
 

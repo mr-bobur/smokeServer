@@ -78,7 +78,6 @@ import {
   getRpcCommands,
   getTopologyRollup,
   registerCentralGateway,
-  refreshGatewayMetrics,
   registerOrUpdateFloorHub,
   sendRpcCommand,
   startDevicePairingSession,
@@ -211,12 +210,6 @@ app.delete(
   authenticateJWT,
   authorizeRoles('super_admin'),
   deleteCentralGateway
-);
-app.post(
-  '/api/devices/gateways/:serialNumber/refresh',
-  authenticateJWT,
-  authorizeRoles('super_admin', 'tenant', 'user'),
-  refreshGatewayMetrics
 );
 app.post(
   '/api/devices/hubs',
