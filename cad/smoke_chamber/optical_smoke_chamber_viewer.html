@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2-Qismli Yopiq Optik Tutun Kamerasi (45° Labirint Tilchalari, 135° Burchak, PCB Qotirish) - 3D CAD Explorer</title>
+  <title>2-Qismli Sanoat Optik Tutun Kamerasi v4 (2mm Tirqish, 8.8mm Uzun Tilchalar, Ochiq LED Uyasi) - 3D CAD Explorer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -20,13 +20,13 @@
   <header class="w-full max-w-6xl mb-4 flex flex-wrap items-center justify-between border-b border-slate-800 pb-3">
     <div>
       <div class="flex items-center gap-2">
-        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Aniq 2-Body Dizayn</span>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Aniq 2-Body Dizayn (v4)</span>
         <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">135° Forward Scattering</span>
-        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">45° Qiya Labirint Tilchalari</span>
-        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">PCB Qotirish Quloqlari & Shtiftlar</span>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">2.0mm Tirqish • 8.8mm Uzun Tilchalar</span>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">Oson Montaj (Ochiq LED Uyasi)</span>
       </div>
-      <h1 class="text-2xl font-bold text-white mt-1">Sanoat Standartidagi 2-Qismli Optik Tutun Kamerasi (v3)</h1>
-      <p class="text-xs text-slate-400">Rasmga 100% mos: 45° qiya nur to'suvchi tilchalar • To'rtburchak detector uya • Dumaloq 5mm LED gumbazi • PCB montaj elementlari</p>
+      <h1 class="text-2xl font-bold text-white mt-1">Sanoat Optik Tutun Kamerasi (Optical Smoke Chamber v4)</h1>
+      <p class="text-xs text-slate-400">Yangi o'zgarishlar: segmentlar orasi 2.0mm • 45° tilchalar 8.8mm ga uzaytirildi • LED usti baseda ochiq (oson yig'ish) • Cap ustki qopqog'i</p>
     </div>
     <div class="flex items-center gap-2 mt-2 sm:mt-0">
       <span class="text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg font-mono">Gabarit: Ø36.0 × 12.6 mm</span>
@@ -67,7 +67,7 @@
 
         <!-- Exploded View Slider Overlay -->
         <div class="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur border border-slate-800/80 p-3 rounded-lg flex items-center gap-4 text-xs shadow-xl">
-          <span class="font-medium text-slate-300 whitespace-nowrap">Qopqoqni ko'tarish (Explode Cap):</span>
+          <span class="font-medium text-slate-300 whitespace-nowrap">Qopqoqni ochish / yig'ish (Explode Cap):</span>
           <input type="range" id="sliderExplode" min="0" max="100" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
           <span id="lblExplodeVal" class="font-mono text-emerald-400 w-12 text-right">0%</span>
         </div>
@@ -75,24 +75,24 @@
         <!-- Optical Status HUD -->
         <div class="absolute top-4 left-4 pointer-events-none bg-slate-900/85 backdrop-blur border border-slate-800 p-3 rounded-lg text-xs space-y-1.5 shadow-lg">
           <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-200 font-medium">Segment Tirqishi: 2.0 mm • 45° Tilcha: 8.8 mm (Chuqur to'siq)</span>
+          </div>
+          <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-            <span class="text-slate-200 font-medium">Standart 5mm Dumaloq IR LED: 315° (Gorizontal yotqizilgan)</span>
+            <span class="text-slate-200 font-medium">IR LED Uyasi: Baseda tepasi OCHIQ (Yuqoridan erkin tashlanadi)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            <span class="text-slate-200 font-medium">Cap Qopqog'i: LED ustki tomi va orqa gumbazini germetik yopadi</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-            <span class="text-slate-200 font-medium">To'rtburchak IR Detector: 180° (-X o'qi, old tubus bilan)</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-            <span class="text-slate-200 font-medium">Labirint Tilchalari: 45° burchak ostida qiya (Nur 100% to'siladi)</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <span class="text-slate-200 font-medium">Optik Burchak: |315° - 180°| = 135.0° (Forward Mie Scattering)</span>
+            <span class="text-slate-200 font-medium">To'rtburchak IR Detektor: 180° (-X o'qi, old tubus bilan)</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
-            <span class="text-slate-200 font-medium">PCB Qotirish: 2 ta yo'naltiruvchi shtift (Ø2.0mm) + 2 ta M2 vinti quloqlari</span>
+            <span class="text-slate-200 font-medium">PCB Montaj: 2 ta yo'naltiruvchi shtift (Ø2.0mm) + 2 ta M2 vint qulog'i</span>
           </div>
         </div>
       </div>
@@ -100,7 +100,7 @@
       <!-- Viewport Footer -->
       <div class="px-4 py-2 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
         <span>🖱️ Sichqoncha: Aylantirish (Drag) • Kattalashtirish (Scroll) • Siljitish (Shift+Drag)</span>
-        <span class="font-mono text-emerald-400">100% Sanoat Standarti (EN 54-7 / UL 268)</span>
+        <span class="font-mono text-emerald-400">EN 54-7 / UL 268 Sanoat Standarti</span>
       </div>
     </div>
 
@@ -111,7 +111,7 @@
       <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col">
         <h2 class="text-sm font-semibold text-white mb-2 flex items-center justify-between">
           <span>Kamera Qismlari (2 Body)</span>
-          <span class="text-xs text-emerald-400">Faqat 2 Qism</span>
+          <span class="text-xs text-emerald-400">Oson Yig'iluvchi</span>
         </h2>
         <div class="space-y-2 text-xs">
           
@@ -120,7 +120,7 @@
               <input type="checkbox" id="chkCompBase" checked class="rounded border-slate-700 text-emerald-500">
               <div>
                 <div class="font-semibold text-slate-200">01. Kamera Asosi (Chamber Base)</div>
-                <div class="text-[10px] text-slate-400">45° qiya tilchalar, to'rtburchak detektor uya, 5mm LED gumbazi, PCB qotirgichlar</div>
+                <div class="text-[10px] text-slate-400">2mm tirqish, 8.8mm tilcha, ochiq LED yotog'i, PCB montaj shtiftlari</div>
               </div>
             </div>
             <span class="w-3.5 h-3.5 rounded-full bg-slate-800 border border-emerald-500"></span>
@@ -131,7 +131,7 @@
               <input type="checkbox" id="chkCompCap" checked class="rounded border-slate-700 text-emerald-500">
               <div>
                 <div class="font-semibold text-slate-200">02. Yopiq Qopqoq (Chamber Cap)</div>
-                <div class="text-[10px] text-slate-400">Qovurg'ali shift, mos tushuvchi uya tomlari, 4 ta elastik kulp (snaps)</div>
+                <div class="text-[10px] text-slate-400">LED ustki tomi, dumaloq orqa gumbaz, qovurg'ali shift, 4 snap kulp</div>
               </div>
             </div>
             <span class="w-3.5 h-3.5 rounded-full bg-slate-900 border border-cyan-400"></span>
@@ -143,34 +143,34 @@
       <!-- Technical Specifications Box -->
       <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col text-xs space-y-2">
         <h2 class="text-sm font-semibold text-white mb-1 flex items-center justify-between">
-          <span>Konstruktiv Parametrlar</span>
-          <span class="text-xs text-emerald-400">Rasmdagi Reallik</span>
+          <span>Parametrlar Xulosasi (v4)</span>
+          <span class="text-xs text-emerald-400">Yangilangan</span>
         </h2>
         
         <div class="space-y-1.5 divide-y divide-slate-800/80 text-[11px]">
           <div class="flex justify-between pt-1">
-            <span class="text-slate-400">Asos Diametri:</span>
-            <span class="font-mono font-medium text-slate-200">Ø36.0 mm (Qopqoq: Ø37.2 mm)</span>
+            <span class="text-slate-400">Segmentlar O'rtasidagi Tirqish:</span>
+            <span class="font-mono font-bold text-emerald-400">2.0 mm (Stem: 5.05 mm)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">45° Tilcha Uzunligi:</span>
+            <span class="font-mono font-bold text-amber-300">8.8 mm (+3.6 mm chuqur)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">LED Uyasini Yig'ish Usuli:</span>
+            <span class="font-mono font-medium text-slate-200">Baseda ochiq yotoq + Capda qopqoq</span>
           </div>
           <div class="flex justify-between pt-1.5">
             <span class="text-slate-400">Optik Burchak:</span>
-            <span class="font-mono font-bold text-emerald-400">135.0° (|315° - 180°|)</span>
+            <span class="font-mono font-bold text-emerald-400">135.0° (Forward Mie)</span>
           </div>
           <div class="flex justify-between pt-1.5">
-            <span class="text-slate-400">Labirint Segmentlari:</span>
-            <span class="font-mono font-medium text-amber-300">16 ta • Tilchalari 45° qiya</span>
-          </div>
-          <div class="flex justify-between pt-1.5">
-            <span class="text-slate-400">IR Detector Uyasi:</span>
+            <span class="text-slate-400">IR Detektor Uyasi:</span>
             <span class="font-mono font-medium text-slate-200">To'rtburchak (5.4 × 7.0 mm) + Ø1.8mm tubus</span>
           </div>
           <div class="flex justify-between pt-1.5">
-            <span class="text-slate-400">IR LED Uyasi:</span>
-            <span class="font-mono font-medium text-slate-200">Standart 5mm LED gumbazi + fiksator</span>
-          </div>
-          <div class="flex justify-between pt-1.5">
             <span class="text-slate-400">PCB Montaj Shtiftlari:</span>
-            <span class="font-mono font-medium text-purple-300">2 ta taglik shtifti (Ø2.0mm × 2.5mm)</span>
+            <span class="font-mono font-medium text-purple-300">2 ta pastki shtift (Ø2.0mm × 2.5mm)</span>
           </div>
           <div class="flex justify-between pt-1.5">
             <span class="text-slate-400">PCB Vint Quloqlari:</span>
@@ -190,7 +190,7 @@
       <!-- Export Files Box -->
       <div class="bg-gradient-to-r from-emerald-950/40 to-slate-900 border border-emerald-500/30 rounded-xl p-3 text-xs flex flex-col gap-2">
         <div class="font-semibold text-emerald-300 flex items-center gap-1.5">
-          <span>📦 Asosiy Ishlab Chiqarish Fayllari</span>
+          <span>📦 Asosiy Ishlab Chiqarish Fayllari (v4)</span>
         </div>
         <p class="text-[11px] text-slate-300">
           • <span class="font-mono text-emerald-400">01_Chamber_Base.step / .stl</span><br>
@@ -325,7 +325,7 @@
           }
         }
 
-        // 16-Segment Perimeter Labyrinth with 45° ANGLED BLADES (Tilchalar 45° burchakda!)
+        // 16-Segment Perimeter Labyrinth with 2.0 mm Outer Gaps & 8.8 mm Lengthened 45° Blades
         const vaneCount = 16;
         for (let i = 0; i < vaneCount; i++) {
           const deg = i * (360.0 / vaneCount);
@@ -336,11 +336,12 @@
           const cosA = Math.cos(rad);
           const sinA = Math.sin(rad);
 
-          // Outer Circumferential Base Stem
-          const s1x = 17.2 * cosA; const s1y = 17.2 * sinA;
+          // Outer Circumferential Stem (Width 5.05 mm leaves 2.0 mm gap!)
+          const s1x = 17.3 * cosA; const s1y = 17.3 * sinA;
           const wAng = rad + Math.PI / 2;
-          const s_w1x = s1x + 1.7 * Math.cos(wAng); const s_w1y = s1y + 1.7 * Math.sin(wAng);
-          const s_w2x = s1x - 1.7 * Math.cos(wAng); const s_w2y = s1y - 1.7 * Math.sin(wAng);
+          const halfStem = 5.05 / 2.0;
+          const s_w1x = s1x + halfStem * Math.cos(wAng); const s_w1y = s1y + halfStem * Math.sin(wAng);
+          const s_w2x = s1x - halfStem * Math.cos(wAng); const s_w2y = s1y - halfStem * Math.sin(wAng);
 
           const ptS1 = project(s_w1x, s_w1y, floorThick);
           const ptS2 = project(s_w2x, s_w2y, floorThick);
@@ -351,12 +352,12 @@
           ctx.moveTo(ptS1.x, ptS1.y); ctx.lineTo(ptS2.x, ptS2.y);
           ctx.lineTo(ptS3.x, ptS3.y); ctx.lineTo(ptS4.x, ptS4.y);
           ctx.closePath();
-          ctx.fillStyle = 'rgba(71, 85, 105, 0.8)'; ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1;
+          ctx.fillStyle = 'rgba(71, 85, 105, 0.85)'; ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1;
           ctx.fill(); ctx.stroke();
 
-          // 45° Angled Inward Blade (Tilcha 45° burchak ostida markazga emas, qiya turadi!)
-          const bladeAng = rad + Math.PI * 0.75; // 45° inward slant
-          const bLen = 5.2;
+          // Lengthened 45° Inward Blade (Length = 8.8 mm, reaching deep into chamber)
+          const bladeAng = rad + Math.PI * 0.75;
+          const bLen = 8.8;
           const bTipX = s_w1x + bLen * Math.cos(bladeAng);
           const bTipY = s_w1y + bLen * Math.sin(bladeAng);
 
@@ -369,9 +370,9 @@
           ctx.moveTo(ptB1.x, ptB1.y); ctx.lineTo(ptB2.x, ptB2.y);
           ctx.lineTo(ptB3.x, ptB3.y); ctx.lineTo(ptB4.x, ptB4.y);
           ctx.closePath();
-          ctx.fillStyle = 'rgba(100, 116, 139, 0.85)';
+          ctx.fillStyle = 'rgba(100, 116, 139, 0.9)';
           ctx.strokeStyle = '#cbd5e1';
-          ctx.lineWidth = 1.2;
+          ctx.lineWidth = 1.3;
           ctx.fill(); ctx.stroke();
         }
 
@@ -438,35 +439,37 @@
           ctx.beginPath(); ctx.moveTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
         }
 
-        // Rectangular Detector Inside Pocket & Collimator Protruding Snout
+        // Collimator Protruding Snout on Detector
         const pSnout = project(-7.7, 0, 5.6);
         ctx.beginPath(); ctx.arc(pSnout.x, pSnout.y, 4.5, 0, Math.PI * 2);
         ctx.fillStyle = '#0284c7'; ctx.fill(); ctx.strokeStyle = '#38bdf8'; ctx.stroke();
 
-        // Right Standard 5mm Round LED Socket (at 315°, -45° South-East)
+        // Right 5mm Round LED Socket (at 315°, OPEN TOP ON BASE!)
         const ledAng = 315 * Math.PI / 180;
         const lx1 = 9.0 * Math.cos(ledAng); const ly1 = 9.0 * Math.sin(ledAng);
         const lx2 = 18.0 * Math.cos(ledAng); const ly2 = 18.0 * Math.sin(ledAng);
         const lx3 = 21.2 * Math.cos(ledAng); const ly3 = 21.2 * Math.sin(ledAng);
 
+        // Base has open cradle with side guiding walls (height = 5.2mm)
         const pLx1 = project(lx1, ly1, floorThick);
         const pLx2 = project(lx2, ly2, floorThick);
-        const pLx2_t = project(lx2, ly2, totalBaseH);
-        const pLx1_t = project(lx1, ly1, totalBaseH);
+        const pLx2_m = project(lx2, ly2, floorThick + 5.2);
+        const pLx1_m = project(lx1, ly1, floorThick + 5.2);
 
         ctx.beginPath();
         ctx.moveTo(pLx1.x, pLx1.y); ctx.lineTo(pLx2.x, pLx2.y);
-        ctx.lineTo(pLx2_t.x, pLx2_t.y); ctx.lineTo(pLx1_t.x, pLx1_t.y); ctx.closePath();
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; ctx.fill();
+        ctx.lineTo(pLx2_m.x, pLx2_m.y); ctx.lineTo(pLx1_m.x, pLx1_m.y); ctx.closePath();
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.35)'; ctx.fill();
         ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.4; ctx.stroke();
 
-        // Rear Rounded Hood for 5mm LED Bulb
-        drawCircle3D(lx3, ly3, floorThick, 4.4, '#ef4444', 'rgba(239, 68, 68, 0.35)');
-        drawCircle3D(lx3, ly3, totalBaseH, 4.4, '#ef4444', 'rgba(239, 68, 68, 0.45)');
+        // Open semi-cylindrical cradle bed for 5mm LED
+        drawCircle3D(lx2, ly2, floorThick + 1.0, 2.7, '#ef4444', 'rgba(239, 68, 68, 0.4)');
+        // 5mm LED bulb shown resting horizontally inside the open cradle!
+        drawCircle3D(lx3, ly3, 5.6, 2.5, '#ef4444', 'rgba(255, 255, 255, 0.7)');
 
-        // PCB MOUNTING FEATURES (Shtiftlar va Vint Quloqlari)
+        // PCB MOUNTING FEATURES
         if (showPcbMount) {
-          // 1. Dual Locating / Alignment Pegs under floor (Z = -2.5 to 0)
+          // Locating Pegs (Z = -2.5 to 0)
           const pPin1 = project(0, 14.5, 0);
           const pPin1_b = project(0, 14.5, -2.5);
           drawCircle3D(0, 14.5, 0, 1.0, '#a855f7', 'rgba(168, 85, 247, 0.6)');
@@ -481,13 +484,12 @@
           ctx.beginPath(); ctx.moveTo(pPin2.x, pPin2.y); ctx.lineTo(pPin2_b.x, pPin2_b.y);
           ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 2.5; ctx.stroke();
 
-          // 2. Dual PCB Screw Tabs at 45° and 225°
+          // Dual PCB Screw Tabs at 45° and 225°
           for (let ta of [45, 225]) {
             const trad = ta * Math.PI / 180;
             const tx = 19.5 * Math.cos(trad); const ty = 19.5 * Math.sin(trad);
             drawCircle3D(tx, ty, 0, 3.4, '#a855f7', 'rgba(168, 85, 247, 0.4)');
             drawCircle3D(tx, ty, floorThick + 0.6, 3.4, '#a855f7', 'rgba(168, 85, 247, 0.5)');
-            // M2 Screw Hole (Ø2.2mm)
             drawCircle3D(tx, ty, 0, 1.15, '#e9d5ff', '#1e1b4b', 1.5);
           }
         }
@@ -507,7 +509,7 @@
         // Downward Light-Seal Skirt
         drawCylinder3D(0, 0, capBaseZ - 2.4, capDiscR, 2.4, '#0891b2', 'rgba(8, 145, 178, 0.25)');
 
-        // Underside Parallel Anti-Reflective Ribs (Shift Qovurg'alari)
+        // Underside Parallel Serrations
         ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
         ctx.lineWidth = 1.0;
         const pitch = 1.2;
@@ -527,11 +529,12 @@
         ctx.beginPath(); ctx.moveTo(cRx1.x, cRx1.y); ctx.lineTo(cRx2.x, cRx2.y);
         ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.stroke();
 
-        // Right LED Extended Rounded Hood Roof
+        // Right LED Downward Roof & Rear Rounded Hood (CLOSES OVER THE OPEN BASE CRADLE!)
         const ledAng = 315 * Math.PI / 180;
-        const cLx3 = 21.2 * Math.cos(ledAng); const cLy3 = 21.2 * Math.sin(ledAng);
-        drawCircle3D(cLx3, cLy3, capBaseZ - 2.4, 4.6, '#06b6d4', 'rgba(6, 182, 212, 0.4)');
-        drawCircle3D(cLx3, cLy3, capBaseZ + capThick, 4.6, '#06b6d4', 'rgba(6, 182, 212, 0.5)');
+        const cLx2 = 18.0 * Math.cos(ledAng); const cLy2 = 18.0 * Math.sin(ledAng);
+        const cLx3 = 20.5 * Math.cos(ledAng); const cLy3 = 20.5 * Math.sin(ledAng);
+        drawCircle3D(cLx3, cLy3, capBaseZ - 6.0, 4.5, '#06b6d4', 'rgba(6, 182, 212, 0.5)');
+        drawCircle3D(cLx3, cLy3, capBaseZ + capThick, 4.5, '#06b6d4', 'rgba(6, 182, 212, 0.6)');
 
         // 4x Snap Locking Retention Clips
         for (let ca of [45, 135, 225, 270]) {
@@ -570,7 +573,7 @@
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // 2. Unscattered Beam passing through center into opposite trap labyrinth (at 135°)
+        // 2. Unscattered Beam passing into opposite trap labyrinth
         const unscatteredAng = (315 - 180) * Math.PI / 180; // 135°
         const ux = 17.0 * Math.cos(unscatteredAng);
         const uy = 17.0 * Math.sin(unscatteredAng);
@@ -585,7 +588,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // 3. Forward Scattered Smoke Ray into Receiver at 180° (Scattering angle = 135°!)
+        // 3. Forward Scattered Smoke Ray into Receiver at 180°
         ctx.beginPath();
         ctx.moveTo(centerPt.x, centerPt.y);
         ctx.lineTo(recPt.x, recPt.y);
