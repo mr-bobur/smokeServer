@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standart Yopiq Optik Tutun Kamerasi (Optical Smoke Chamber) - 3D CAD Explorer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    canvas { touch-action: none; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 flex flex-col items-center">
+
+  <!-- Header -->
+  <header class="w-full max-w-6xl mb-4 flex flex-wrap items-center justify-between border-b border-slate-800 pb-3">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30">EN 54-7 & UL 268 Standart</span>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">120° Forward Scattering</span>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">16-Qovurg'ali Labirint</span>
+      </div>
+      <h1 class="text-2xl font-bold text-white mt-1">Yopiq Optik Tutun Kamerasi (Optical Smoke Chamber)</h1>
+      <p class="text-xs text-slate-400">IR LED (940nm) & Fotodiod/Fototranzistor uchun Yopiq Labirintli Optik Kamera • Ø34.0 mm × 16.5 mm</p>
+    </div>
+    <div class="flex items-center gap-2 mt-2 sm:mt-0">
+      <span class="text-xs text-slate-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg font-mono">Gabarit: Ø34 × 16.5 mm</span>
+      <span class="text-xs text-emerald-400 bg-slate-900 border border-emerald-500/30 px-3 py-1.5 rounded-lg font-mono">Burchak: 120.0°</span>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-4">
+    
+    <!-- 3D Interactive Viewport (8 Cols) -->
+    <div class="lg:col-span-8 flex flex-col bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative">
+      
+      <!-- Viewport Toolbar -->
+      <div class="flex flex-wrap items-center justify-between px-4 py-2 bg-slate-900/90 border-b border-slate-800 z-10 text-xs gap-2">
+        <div class="flex items-center gap-2">
+          <button id="btnIsoView" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition font-medium">Izometriya</button>
+          <button id="btnTopView" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition font-medium">Yuqoridan (Top)</button>
+          <button id="btnSideView" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition font-medium">Yon Kesim</button>
+          <button id="btnResetView" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition font-medium">Qaytarish</button>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+            <input type="checkbox" id="chkOpticalRay" checked class="rounded border-slate-700 text-red-500 focus:ring-0">
+            <span class="text-red-400 font-medium">IR Nur Yo'nalishi (Ray Tracing)</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+            <input type="checkbox" id="chkCutaway" class="rounded border-slate-700 text-blue-500 focus:ring-0">
+            <span class="text-blue-400 font-medium">Kesim (Cutaway)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Canvas Area -->
+      <div class="relative w-full h-[520px] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <canvas id="viewport" width="800" height="520" class="w-full h-full"></canvas>
+
+        <!-- Exploded View Slider Overlay -->
+        <div class="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-blur border border-slate-800/80 p-3 rounded-lg flex items-center gap-4 text-xs shadow-xl">
+          <span class="font-medium text-slate-300 whitespace-nowrap">Yig'ma / Qismlarga ajratish (Explode):</span>
+          <input type="range" id="sliderExplode" min="0" max="100" value="0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+          <span id="lblExplodeVal" class="font-mono text-emerald-400 w-12 text-right">0%</span>
+        </div>
+
+        <!-- Optical Status HUD -->
+        <div class="absolute top-4 left-4 pointer-events-none bg-slate-900/85 backdrop-blur border border-slate-800 p-3 rounded-lg text-xs space-y-1.5 shadow-lg">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+            <span class="text-slate-200 font-medium">IR Emitter (940nm): Ø5.0 mm • 210°</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+            <span class="text-slate-200 font-medium">Fototranzistor (Receiver): Ø5.0 mm • 330°</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-200 font-medium">Forward Sochilish Burchagi: 120°</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span class="text-slate-200 font-medium">To'g'ridan-to'g'ri To'siq (Septum): 1.8 mm devor</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+            <span class="text-slate-200 font-medium">Nur Yutgich Labirint (Trap Horn): >99.9% yutilish</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewport Footer -->
+      <div class="px-4 py-2 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <span>🖱️ Sichqoncha: Aylantirish (Drag) • Kattalashtirish (Scroll) • Siljitish (Shift+Drag)</span>
+        <span class="font-mono text-emerald-400">EN 54-7 / UL 268 Professional Geometry</span>
+      </div>
+    </div>
+
+    <!-- Right Column: Specs & Hierarchy (4 Cols) -->
+    <div class="lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- Component Hierarchy Box -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col">
+        <h2 class="text-sm font-semibold text-white mb-2 flex items-center justify-between">
+          <span>Kamera Konstruktsiyasi</span>
+          <span class="text-xs text-slate-400">3 Asosiy Qism</span>
+        </h2>
+        <div class="space-y-2 text-xs">
+          
+          <label class="flex items-center justify-between p-2.5 rounded bg-slate-800/60 hover:bg-slate-800 transition cursor-pointer border border-slate-700/50">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" id="chkCompBase" checked class="rounded border-slate-700 text-emerald-500">
+              <div>
+                <div class="font-semibold text-slate-200">01. Kamera Asosi (Base)</div>
+                <div class="text-[10px] text-slate-400">16 labirint qovurg'asi, 120° kanallar, V-horn nur yutgich</div>
+              </div>
+            </div>
+            <span class="w-3.5 h-3.5 rounded-full bg-slate-800 border border-slate-600"></span>
+          </label>
+
+          <label class="flex items-center justify-between p-2.5 rounded bg-slate-800/60 hover:bg-slate-800 transition cursor-pointer border border-slate-700/50">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" id="chkCompCap" checked class="rounded border-slate-700 text-emerald-500">
+              <div>
+                <div class="font-semibold text-slate-200">02. Yopiq Qopqoq (Top Cap)</div>
+                <div class="text-[10px] text-slate-400">Nurni ichkariga o'tkazmaydigan germetik qopqoq + fiksatorlar</div>
+              </div>
+            </div>
+            <span class="w-3.5 h-3.5 rounded-full bg-slate-900 border border-emerald-500"></span>
+          </label>
+
+          <label class="flex items-center justify-between p-2.5 rounded bg-slate-800/60 hover:bg-slate-800 transition cursor-pointer border border-slate-700/50">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" id="chkCompMesh" checked class="rounded border-slate-700 text-emerald-500">
+              <div>
+                <div class="font-semibold text-slate-200">03. Hashorot To'ri (Mesh Ring)</div>
+                <div class="text-[10px] text-slate-400">Perforatsiya qilingan 0.75mm to'r halqasi (chivinlarga qarshi)</div>
+              </div>
+            </div>
+            <span class="w-3.5 h-3.5 rounded-full bg-amber-600/60 border border-amber-400"></span>
+          </label>
+
+        </div>
+      </div>
+
+      <!-- Technical Specifications Box -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col text-xs space-y-2">
+        <h2 class="text-sm font-semibold text-white mb-1 flex items-center justify-between">
+          <span>Standart O'lchamlar</span>
+          <span class="text-xs text-emerald-400">EN 54-7</span>
+        </h2>
+        
+        <div class="space-y-1.5 divide-y divide-slate-800/80 text-[11px]">
+          <div class="flex justify-between pt-1">
+            <span class="text-slate-400">Tashqi Diametr:</span>
+            <span class="font-mono font-medium text-slate-200">Ø34.0 mm</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Yig'ilgan Balandlik:</span>
+            <span class="font-mono font-medium text-slate-200">16.5 mm (Asos: 13.5 mm)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Optik O'q Balandligi:</span>
+            <span class="font-mono font-medium text-slate-200">Z = 7.5 mm (PCB dan)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Sochilish Burchagi:</span>
+            <span class="font-mono font-bold text-emerald-400">120.0° (Forward)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">LED / Sensor O'lchami:</span>
+            <span class="font-mono font-medium text-slate-200">Ø5.0 mm (Standart T-1 3/4)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Kollimator Diafragmasi:</span>
+            <span class="font-mono font-medium text-slate-200">Ø1.4 mm (Emitter) / Ø1.5 mm (Rec)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Labirint Qovurg'alari:</span>
+            <span class="font-mono font-medium text-slate-200">16 ta involyuta qovurg'a (1.1 mm)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Tashqi Nur Susaytirishi:</span>
+            <span class="font-mono font-medium text-emerald-400">> 75 dB (0% xato trevoga)</span>
+          </div>
+          <div class="flex justify-between pt-1.5">
+            <span class="text-slate-400">Tavsiya Material:</span>
+            <span class="font-mono font-medium text-amber-300">Qora Mot ABS / PETG (Matte Black)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Export Links -->
+      <div class="bg-gradient-to-r from-emerald-950/40 to-slate-900 border border-emerald-500/30 rounded-xl p-3 text-xs flex flex-col gap-2">
+        <div class="font-semibold text-emerald-300 flex items-center gap-1.5">
+          <span>📦 Ishlab Chiqarish Fayllari Tayyor</span>
+        </div>
+        <p class="text-[11px] text-slate-300">
+          3D printerda (FDM/SLA) to'g'ridan-to'g'ri chop etish yoki SolidWorks/Fusion 360'ga import qilish uchun STEP va STL modellari to'liq generatsiya qilindi.
+        </p>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    // Pure Canvas-based 3D Wireframe/Solid Renderer
+    const canvas = document.getElementById('viewport');
+    const ctx = canvas.getContext('2d');
+
+    let yaw = -0.75;
+    let pitch = 0.55;
+    let zoom = 14.5;
+    let panX = 0;
+    let panY = -15;
+
+    let isDragging = false;
+    let isPanning = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    let explodePct = 0;
+    let showRays = true;
+    let showCutaway = false;
+    let showBase = true;
+    let showCap = true;
+    let showMesh = true;
+
+    // Pulse animation for optical ray
+    let pulseTime = 0;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      draw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function project(x, y, z) {
+      const cosY = Math.cos(yaw);
+      const sinY = Math.sin(yaw);
+      const x1 = x * cosY - y * sinY;
+      const y1 = x * sinY + y * cosY;
+      const z1 = z;
+
+      const cosP = Math.cos(pitch);
+      const sinP = Math.sin(pitch);
+      const y2 = y1 * cosP - z1 * sinP;
+      const z2 = y1 * sinP + z1 * cosP;
+      const x2 = x1;
+
+      const screenX = canvas.width / 2 + panX + x2 * zoom;
+      const screenY = canvas.height / 2 + panY - y2 * zoom;
+      return { x: screenX, y: screenY, depth: z2 };
+    }
+
+    function drawCircle3D(cx, cy, cz, radius, strokeColor, fillColor = null, lineWidth = 1) {
+      const segments = 32;
+      ctx.beginPath();
+      for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        const px = cx + radius * Math.cos(theta);
+        const py = cy + radius * Math.sin(theta);
+        const pt = project(px, py, cz);
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.closePath();
+      if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+
+    function drawCylinder3D(cx, cy, cz, radius, height, strokeColor, fillColor = null) {
+      drawCircle3D(cx, cy, cz, radius, strokeColor, fillColor);
+      drawCircle3D(cx, cy, cz + height, radius, strokeColor, fillColor);
+      for (let ang of [0, Math.PI/2, Math.PI, 3*Math.PI/2]) {
+        const p1 = project(cx + radius * Math.cos(ang), cy + radius * Math.sin(ang), cz);
+        const p2 = project(cx + radius * Math.cos(ang), cy + radius * Math.sin(ang), cz + height);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = strokeColor; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+
+    function drawBox3D(cx, cy, cz, lx, ly, lz, strokeColor, fillColor = null) {
+      const hx = lx / 2; const hy = ly / 2;
+      const pts = [
+        project(cx - hx, cy - hy, cz),
+        project(cx + hx, cy - hy, cz),
+        project(cx + hx, cy + hy, cz),
+        project(cx - hx, cy + hy, cz),
+        project(cx - hx, cy - hy, cz + lz),
+        project(cx + hx, cy - hy, cz + lz),
+        project(cx + hx, cy + hy, cz + lz),
+        project(cx - hx, cy + hy, cz + lz)
+      ];
+
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.lineTo(pts[2].x, pts[2].y); ctx.lineTo(pts[3].x, pts[3].y); ctx.closePath();
+      if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
+      ctx.strokeStyle = strokeColor; ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(pts[4].x, pts[4].y); ctx.lineTo(pts[5].x, pts[5].y);
+      ctx.lineTo(pts[6].x, pts[6].y); ctx.lineTo(pts[7].x, pts[7].y); ctx.closePath();
+      if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
+      ctx.strokeStyle = strokeColor; ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        ctx.moveTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[i+4].x, pts[i+4].y);
+      }
+      ctx.stroke();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Floor grid for scale
+      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      const gridSize = 25;
+      const gridStep = 5;
+      for (let i = -gridSize; i <= gridSize; i += gridStep) {
+        const p1 = project(i, -gridSize, 0);
+        const p2 = project(i, gridSize, 0);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+        const p3 = project(-gridSize, i, 0);
+        const p4 = project(gridSize, i, 0);
+        ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+      }
+
+      const explodeOffsetZ = (explodePct / 100) * 16.0; // Top Cap lifts up
+      const explodeOffsetR = (explodePct / 100) * 8.0;  // Mesh expands out
+
+      // ----------------------------------------------------------------------
+      // 1. BASE PART (01_Optical_Smoke_Chamber_Base)
+      // ----------------------------------------------------------------------
+      if (showBase) {
+        // Floor Disc
+        drawCylinder3D(0, 0, 0, 17.0, 1.5, '#475569', 'rgba(15, 23, 42, 0.6)');
+
+        // Inner Sensing Cavity Well (Ø14 mm)
+        drawCircle3D(0, 0, 1.5, 7.0, '#38bdf8', null, 1.5);
+
+        // 16 Labyrinth Vanes (Omnidirectional aerodynamic curved baffles)
+        const vaneCount = 16;
+        for (let i = 0; i < vaneCount; i++) {
+          const ang = i * (Math.PI * 2 / vaneCount);
+          // Skip if cutaway or overlaps barrels
+          if (showCutaway && Math.cos(ang) > 0.2 && Math.sin(ang) > 0.1) continue;
+          if (ang > 3.3 && ang < 4.0) continue; // emitter zone
+          if (ang > 5.4 && ang < 6.0) continue; // receiver zone
+
+          const r1 = 12.0;
+          const r2 = 16.5;
+          const vx1 = r1 * Math.cos(ang);
+          const vy1 = r1 * Math.sin(ang);
+          const vx2 = r2 * Math.cos(ang + 0.35);
+          const vy2 = r2 * Math.sin(ang + 0.35);
+
+          const pt1 = project(vx1, vy1, 1.5);
+          const pt2 = project(vx2, vy2, 1.5);
+          const pt3 = project(vx2, vy2, 13.5);
+          const pt4 = project(vx1, vy1, 13.5);
+
+          ctx.beginPath();
+          ctx.moveTo(pt1.x, pt1.y); ctx.lineTo(pt2.x, pt2.y);
+          ctx.lineTo(pt3.x, pt3.y); ctx.lineTo(pt4.x, pt4.y);
+          ctx.closePath();
+          ctx.strokeStyle = '#64748b';
+          ctx.fillStyle = 'rgba(30, 41, 59, 0.75)';
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Direct Optical Barrier (Septum Wall along -Y axis)
+        const s_p1 = project(-0.9, -2.0, 1.5);
+        const s_p2 = project(0.9, -2.0, 1.5);
+        const s_p3 = project(0.9, -12.0, 1.5);
+        const s_p4 = project(-0.9, -12.0, 1.5);
+        const s_t1 = project(-0.9, -2.0, 13.5);
+        const s_t2 = project(0.9, -2.0, 13.5);
+        const s_t3 = project(0.9, -12.0, 13.5);
+        const s_t4 = project(-0.9, -12.0, 13.5);
+
+        ctx.beginPath();
+        ctx.moveTo(s_p1.x, s_p1.y); ctx.lineTo(s_p2.x, s_p2.y);
+        ctx.lineTo(s_p3.x, s_p3.y); ctx.lineTo(s_p4.x, s_p4.y); ctx.closePath();
+        ctx.fillStyle = 'rgba(234, 88, 12, 0.4)'; ctx.fill();
+        ctx.strokeStyle = '#f97316'; ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(s_t1.x, s_t1.y); ctx.lineTo(s_t2.x, s_t2.y);
+        ctx.lineTo(s_t3.x, s_t3.y); ctx.lineTo(s_t4.x, s_t4.y); ctx.closePath();
+        ctx.fillStyle = 'rgba(234, 88, 12, 0.5)'; ctx.fill();
+        ctx.strokeStyle = '#f97316'; ctx.stroke();
+
+        for (let k = 0; k < 4; k++) {
+          const b1 = [s_p1, s_p2, s_p3, s_p4][k];
+          const b2 = [s_t1, s_t2, s_t3, s_t4][k];
+          ctx.beginPath(); ctx.moveTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y);
+          ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.2; ctx.stroke();
+        }
+
+        // IR Emitter Barrel (at 210°, Z = 7.5 mm)
+        const emitRad = 210 * Math.PI / 180;
+        const ex = 11.5 * Math.cos(emitRad);
+        const ey = 11.5 * Math.sin(emitRad);
+        drawCylinder3D(ex, ey, 5.0, 3.6, 5.0, '#ef4444', 'rgba(239, 68, 68, 0.3)');
+        drawCircle3D(ex, ey, 7.5, 2.6, '#f87171', 'rgba(239, 68, 68, 0.6)');
+
+        // Receiver Barrel (at 330°, Z = 7.5 mm)
+        const recRad = 330 * Math.PI / 180;
+        const rx = 11.5 * Math.cos(recRad);
+        const ry = 11.5 * Math.sin(recRad);
+        drawCylinder3D(rx, ry, 5.0, 3.6, 5.0, '#3b82f6', 'rgba(59, 130, 246, 0.3)');
+        drawCircle3D(rx, ry, 7.5, 2.6, '#60a5fa', 'rgba(59, 130, 246, 0.6)');
+
+        // Primary Beam Light Trap (V-Horn at 30°)
+        const tx = 13.0 * Math.cos(30 * Math.PI / 180);
+        const ty = 13.0 * Math.sin(30 * Math.PI / 180);
+        drawBox3D(tx, ty, 4.0, 4.5, 7.0, 7.0, '#a855f7', 'rgba(168, 85, 247, 0.25)');
+
+        // Receiver FOV Trap (at 150°)
+        const rx_t = 13.0 * Math.cos(150 * Math.PI / 180);
+        const ry_t = 13.0 * Math.sin(150 * Math.PI / 180);
+        drawBox3D(rx_t, ry_t, 4.0, 4.5, 7.0, 7.0, '#a855f7', 'rgba(168, 85, 247, 0.25)');
+      }
+
+      // ----------------------------------------------------------------------
+      // 2. INSECT MESH SCREEN (03_Optical_Smoke_Chamber_Insect_Mesh)
+      // ----------------------------------------------------------------------
+      if (showMesh && (!showCutaway)) {
+        const meshZ = 2.0;
+        const meshR = 17.5 + explodeOffsetR;
+        drawCylinder3D(0, 0, meshZ, meshR, 10.5, 'rgba(245, 158, 11, 0.5)', null);
+        // Draw fine mesh grid lines
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.lineWidth = 0.5;
+        for (let row = 1; row <= 4; row++) {
+          drawCircle3D(0, 0, meshZ + row * 2.1, meshR, 'rgba(245, 158, 11, 0.3)');
+        }
+      }
+
+      // ----------------------------------------------------------------------
+      // 3. TOP CAP (02_Optical_Smoke_Chamber_Top_Cap)
+      // ----------------------------------------------------------------------
+      if (showCap) {
+        const capZ = 13.5 + explodeOffsetZ;
+        drawCylinder3D(0, 0, capZ, 17.3, 1.8, '#10b981', 'rgba(16, 185, 129, 0.3)');
+        drawCylinder3D(0, 0, capZ - 2.0, 16.0, 2.0, '#059669', 'rgba(5, 150, 105, 0.25)');
+        // Center coin slot
+        const cs_p1 = project(-9.0, 0, capZ + 1.8);
+        const cs_p2 = project(9.0, 0, capZ + 1.8);
+        ctx.beginPath(); ctx.moveTo(cs_p1.x, cs_p1.y); ctx.lineTo(cs_p2.x, cs_p2.y);
+        ctx.strokeStyle = '#a7f3d0'; ctx.lineWidth = 2.0; ctx.stroke();
+      }
+
+      // ----------------------------------------------------------------------
+      // 4. RAY TRACING (IR Beam, Scattering, and Light Trap)
+      // ----------------------------------------------------------------------
+      if (showRays) {
+        const emitRad = 210 * Math.PI / 180;
+        const ex = 9.0 * Math.cos(emitRad);
+        const ey = 9.0 * Math.sin(emitRad);
+
+        const recRad = 330 * Math.PI / 180;
+        const rx = 9.0 * Math.cos(recRad);
+        const ry = 9.0 * Math.sin(recRad);
+
+        const centerPt = project(0, 0, 7.5);
+        const emitPt = project(ex, ey, 7.5);
+        const recPt = project(rx, ry, 7.5);
+
+        // Primary IR beam (Red): Emitter -> Center -> Absorber Horn
+        const trapRad = 30 * Math.PI / 180;
+        const tx = 14.5 * Math.cos(trapRad);
+        const ty = 14.5 * Math.sin(trapRad);
+        const trapPt = project(tx, ty, 7.5);
+
+        // Incident Beam (Emitter -> Center)
+        ctx.beginPath();
+        ctx.moveTo(emitPt.x, emitPt.y);
+        ctx.lineTo(centerPt.x, centerPt.y);
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Unscattered Beam into Trap Horn (Clean Air Baseline)
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(centerPt.x, centerPt.y);
+        ctx.lineTo(trapPt.x, trapPt.y);
+        ctx.strokeStyle = '#f87171';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Forward Scattered Smoke Ray into Receiver (Smoke Condition)
+        ctx.beginPath();
+        ctx.moveTo(centerPt.x, centerPt.y);
+        ctx.lineTo(recPt.x, recPt.y);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.0;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 6;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Smoke Particle Cloud at Center (Scattering Volume)
+        ctx.beginPath();
+        ctx.arc(centerPt.x, centerPt.y, 7.0 + Math.sin(pulseTime * 4) * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // 120° Angle Arc Annotation
+        const arcR = 4.0;
+        ctx.beginPath();
+        for (let a = 30; a <= 150; a += 10) {
+          const ar = a * Math.PI / 180;
+          const p = project(arcR * Math.cos(ar), arcR * Math.sin(ar), 7.5);
+          if (a === 30) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const labelPos = project(0, 5.0, 7.5);
+        ctx.fillStyle = '#10b981';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText('120° Forward Scattering', labelPos.x - 65, labelPos.y - 8);
+      }
+    }
+
+    // Animation loop for pulse
+    function animate() {
+      pulseTime += 0.025;
+      if (showRays) {
+        draw();
+      }
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    // Mouse Controls
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      isPanning = e.shiftKey || e.button === 2;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+
+      if (isPanning) {
+        panX += dx;
+        panY += dy;
+      } else {
+        yaw += dx * 0.008;
+        pitch += dy * 0.008;
+        pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+      }
+      draw();
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      zoom *= zoomFactor;
+      zoom = Math.max(5.0, Math.min(60.0, zoom));
+      draw();
+    }, { passive: false });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // UI Buttons
+    document.getElementById('btnResetView').addEventListener('click', () => {
+      yaw = -0.75; pitch = 0.55; zoom = 14.5; panX = 0; panY = -15;
+      draw();
+    });
+    document.getElementById('btnIsoView').addEventListener('click', () => {
+      yaw = -Math.PI / 4; pitch = Math.PI / 6; zoom = 14.5; panX = 0; panY = -15;
+      draw();
+    });
+    document.getElementById('btnTopView').addEventListener('click', () => {
+      yaw = 0; pitch = Math.PI / 2 - 0.001; zoom = 14.5; panX = 0; panY = 0;
+      draw();
+    });
+    document.getElementById('btnSideView').addEventListener('click', () => {
+      yaw = 0; pitch = 0; zoom = 16.0; panX = 0; panY = 0;
+      draw();
+    });
+
+    // Exploded View Slider
+    const slider = document.getElementById('sliderExplode');
+    const lblVal = document.getElementById('lblExplodeVal');
+    slider.addEventListener('input', (e) => {
+      explodePct = parseFloat(e.target.value);
+      lblVal.innerText = `${Math.round(explodePct)}%`;
+      draw();
+    });
+
+    // Toggles
+    document.getElementById('chkOpticalRay').addEventListener('change', (e) => {
+      showRays = e.target.checked;
+      draw();
+    });
+    document.getElementById('chkCutaway').addEventListener('change', (e) => {
+      showCutaway = e.target.checked;
+      draw();
+    });
+    document.getElementById('chkCompBase').addEventListener('change', (e) => {
+      showBase = e.target.checked;
+      draw();
+    });
+    document.getElementById('chkCompCap').addEventListener('change', (e) => {
+      showCap = e.target.checked;
+      draw();
+    });
+    document.getElementById('chkCompMesh').addEventListener('change', (e) => {
+      showMesh = e.target.checked;
+      draw();
+    });
+
+    // Initial draw
+    resizeCanvas();
+  </script>
+</body>
+</html>
